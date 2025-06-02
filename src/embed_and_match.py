@@ -9,7 +9,7 @@ from typing import Tuple, List
 # Constants
 DIM = 1536
 EMBEDDING_MODEL = "text-embedding-3-small"
-K = 10  # Default number of neighbors to fetch
+K = 5  # Default number of neighbors to fetch
 
 def generate_embedding(text: str) -> list:
     """
@@ -95,59 +95,115 @@ def populate_embeddings(conn: sqlite3.Connection) -> None:
         )
     conn.commit()
 
-def compute_similarities(conn: sqlite3.Connection, k: int = K) -> Tuple[List[int], List[int]]:
+def compute_similarities(
+    conn: sqlite3.Connection,
+    problem_ids: List[int],
+    k: int = K
+) -> Tuple[List[int], List[int]]:
     """
-    Fill the problems_solutions and projects_solutions tables via KNN,
-    then return (problem_solution_ids, project_solution_ids).
+    For the given list of problem_ids:
+      1) Find top-k nearest solutions per problem,
+      2) Aggregate matches, keep best similarity per solution,
+      3) Select top-k solutions overall,
+      4) For each selected solution, find top-k nearest projects,
+      5) Aggregate matches, keep best similarity per project,
+      6) Select top-k projects overall.
+
+    Inserts all problem-solution and project-solution pairs into their respective tables,
+    and returns (solution_ids_top_k, project_ids_top_k).
     """
     cur = conn.cursor()
+    # Clear previous matches
     cur.execute("DELETE FROM problems_solutions;")
     cur.execute("DELETE FROM projects_solutions;")
     conn.commit()
 
-    problem_solution_ids = set()
-    project_solution_ids = set()
-
-    # Problems → Solutions
-    cur.execute("SELECT problem_id FROM problems_embeddings;")
-    for (pid,) in cur.fetchall():
+    # 1) Problems → Solutions
+    problem_solution_matches: List[tuple[int, int, float]] = []
+    for pid in problem_ids:
+        # Fetch the embedding for this problem_id
+        cur.execute(
+            "SELECT embedding FROM problems_embeddings WHERE problem_id = ?",
+            (pid,)
+        )
+        row = cur.fetchone()
+        if not row or row[0] is None:
+            # No embedding for this problem, skip
+            continue
+        problem_blob = row[0]
+        # Now query the nearest solutions using that blob
         cur.execute("""
             SELECT solution_id, distance AS similarity_score
             FROM solutions_embeddings
-            WHERE embedding MATCH (
-              SELECT embedding FROM problems_embeddings WHERE problem_id = ?
-            )
-            AND k = ?;
-        """, (pid, k))
-        matches = cur.fetchall()
+            WHERE embedding MATCH ?
+            AND k = ?
+        """, (problem_blob, k))
+        matches = cur.fetchall()  # list of (solution_id, similarity_score)
+        if not matches:
+            continue
+        # Insert into problems_solutions
         cur.executemany(
             "INSERT INTO problems_solutions(problem_id, solution_id, similarity_score) VALUES (?, ?, ?);",
             ((pid, sid, dist) for sid, dist in matches)
         )
-        for sid, _ in matches:
-            problem_solution_ids.add(sid)
-
-    # Projects → Solutions
-    cur.execute("SELECT project_id FROM projects_embeddings;")
-    for (proj_id,) in cur.fetchall():
-        cur.execute("""
-            SELECT solution_id, distance AS similarity_score
-            FROM solutions_embeddings
-            WHERE embedding MATCH (
-              SELECT embedding FROM projects_embeddings WHERE project_id = ?
-            )
-            AND k = ?;
-        """, (proj_id, k))
-        matches = cur.fetchall()
-        cur.executemany(
-            "INSERT INTO projects_solutions(project_id, solution_id, similarity_score) VALUES (?, ?, ?);",
-            ((proj_id, sid, dist) for sid, dist in matches)
-        )
-        for sid, _ in matches:
-            project_solution_ids.add(sid)
+        for sid, dist in matches:
+            problem_solution_matches.append((pid, sid, dist))
 
     conn.commit()
-    return sorted(problem_solution_ids), sorted(project_solution_ids)
+
+    # 2) Aggregate best similarity per solution
+    best_score_per_solution: dict[int, float] = {}
+    for _, sid, dist in problem_solution_matches:
+        if sid not in best_score_per_solution or dist < best_score_per_solution[sid]:
+            best_score_per_solution[sid] = dist
+
+    # 3) Select top-k solutions by best (lowest) distance
+    sorted_solutions = sorted(best_score_per_solution.items(), key=lambda x: x[1])
+    top_solutions = [sid for sid, _ in sorted_solutions[:k]]
+
+    # 4) Solutions → Projects
+    project_solution_matches: List[tuple[int, int, float]] = []
+    for sid in top_solutions:
+        # Fetch the embedding for this solution_id
+        cur.execute(
+            "SELECT embedding FROM solutions_embeddings WHERE solution_id = ?",
+            (sid,)
+        )
+        row = cur.fetchone()
+        if not row or row[0] is None:
+            continue
+        solution_blob = row[0]
+        # Now query nearest projects using that blob
+        cur.execute("""
+            SELECT project_id, distance AS similarity_score
+            FROM projects_embeddings
+            WHERE embedding MATCH ?
+            AND k = ?
+        """, (solution_blob, k))
+        proj_matches = cur.fetchall()  # list of (project_id, similarity_score)
+        if not proj_matches:
+            continue
+        # Insert into projects_solutions
+        cur.executemany(
+            "INSERT INTO projects_solutions(project_id, solution_id, similarity_score) VALUES (?, ?, ?);",
+            ((proj_id, sid, dist) for proj_id, dist in proj_matches)
+        )
+        for proj_id, dist in proj_matches:
+            project_solution_matches.append((sid, proj_id, dist))
+
+    conn.commit()
+
+    # 5) Aggregate best similarity per project
+    best_score_per_project: dict[int, float] = {}
+    for _, proj_id, dist in project_solution_matches:
+        if proj_id not in best_score_per_project or dist < best_score_per_project[proj_id]:
+            best_score_per_project[proj_id] = dist
+
+    # 6) Select top-k projects by best (lowest) distance
+    sorted_projects = sorted(best_score_per_project.items(), key=lambda x: x[1])
+    top_projects = [proj_id for proj_id, _ in sorted_projects[:k]]
+
+    return top_solutions, top_projects
 
 def match_embeddings(
     db_file: str,
@@ -155,8 +211,9 @@ def match_embeddings(
     k: int = K
 ) -> Tuple[List[int], List[int]]:
     """
-    Connect to donation.db, create & populate embedding tables,
-    run similarity search, and return (solution_ids, project_ids).
+    Connect to the database, create & populate embedding tables,
+    run similarity search using only the given problem_ids, and return
+    (top_solution_ids, top_project_ids).
     """
     openai.api_key = os.getenv("OPENAI_API_KEY")
     if not openai.api_key:
@@ -169,7 +226,12 @@ def match_embeddings(
 
     create_vec_tables(conn)
     populate_embeddings(conn)
-    solution_ids, project_ids = compute_similarities(conn, k)
+
+    if not problem_ids:
+        # No detected problems → no matches
+        return [], []
+
+    solution_ids, project_ids = compute_similarities(conn, problem_ids, k)
     conn.close()
     return solution_ids, project_ids
 
@@ -177,7 +239,7 @@ if __name__ == "__main__":
     DB_PATH = os.getenv("DB_PATH", "donation.db")
     print(f"Running embedding and matching process for database: {DB_PATH}")
     try:
-        sol_ids, proj_ids = match_embeddings(DB_PATH, [], k=K)
+        sol_ids, proj_ids = match_embeddings(DB_PATH, [1, 2, 3], k=K)
         print(f"Matched solutions: {sol_ids}")
         print(f"Matched projects:  {proj_ids}")
     except Exception as e:

@@ -1,53 +1,67 @@
-# Project Description
+# Project Title (Replace with actual title)
 
-This project processes social media posts to identify underlying social or psychological problems, find relevant solutions and projects, and generate a tailored response. The workflow is divided into three main stages: Problem Detection, Embedding & Matching, and Output Generation.
+This project implements a Telegram bot that processes user messages, identifies potential problems or needs, and suggests relevant projects or resources based on the message content.
 
-## Functionalities and Workflow
+## Features
 
-The project processes a social media post from `message.txt` through a pipeline involving several Python scripts and a SQLite database (`donation.db`) with the `vec0` extension for vector embeddings.
+*   **Problem Detection:** Analyzes incoming messages to identify specific problems or requirements.
+*   **Embedding Matching:** Uses embeddings to find and match relevant projects or resources from a database (`donation.db`).
+*   **Output Generation:** Generates a coherent and helpful reply to the user based on the detected problems and matched projects.
+*   **Telegram Integration:** Operates as a Telegram bot, interacting with users via messages.
 
-### Stage 1: Problem Detector (`src/problem_detector.py`)
+## Workflow
 
-- **Input:** Reads a social media post from [`message.txt`](message.txt).
-- **Process:**
-    - Utilizes a Large Language Model (LLM) to analyze the post and extract deep social or psychological problems, identifying both the problem name and its context within the message.
-    - Checks for duplicate problems in the `problems` table of the `donation.db` database and inserts new, unique problems.
-- **Output:** Writes a list of detected problem IDs to `detected_problem_ids.json`.
+The core workflow is handled by the `src/pipeline.py` module. When a message is received by the Telegram bot:
 
-### Stage 2: Embedding & Matching (`src/embed_and_match.py`)
+1.  The message is processed to **detect problems** or needs mentioned by the user.
+2.  Based on the detected problems, **embeddings are computed and matched** against a database of projects (`donation.db`) to find the most relevant ones.
+3.  A final **reply is generated** using the original message, detected problems, and matched projects. This reply is then sent back to the user via Telegram.
 
-- **Input:**
-    - Loads detected problem IDs from `detected_problem_ids.json`.
-    - Fetches problem names, solution names, and project descriptions from the `donation.db` database.
-- **Process:**
-    - Connects to `donation.db` and enables the `vec0` extension.
-    - Creates three virtual tables for storing embeddings: `problems_embeddings`, `solutions_embeddings`, and `projects_embeddings`.
-    - Generates OpenAI embeddings for the fetched problems, solutions, and projects.
-    - Populates the respective embedding tables with the generated vectors.
-    - Performs K-Nearest Neighbors (KNN) searches to find similarities:
-        1. **Problems to Solutions:** Finds the top-K most similar solutions for each detected problem and upserts the relationships into the `problems_solutions` table.
-        2. **Projects to Solutions:** Finds the top-K most similar solutions for each project and upserts the relationships into the `projects_solutions` table.
-- **Output:** Optionally writes detected solution and project IDs to `detected_solution_ids.json` and `detected_project_ids.json`.
+## Installation
 
-### Stage 3: Output Generator (`src/output_generator.py`)
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository_url>
+    cd <repository_directory>
+    ```
+2.  **Install dependencies:**
+    Make sure you have Python 3.6+ installed.
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  **Set up the Telegram Bot Token:**
+    Obtain a bot token from the BotFather on Telegram. Set it as an environment variable:
+    ```bash
+    export TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN"
+    ```
+    Replace `"YOUR_BOT_TOKEN"` with your actual token.
 
-- **Input:**
-    - Reads the original social media post from [`message.txt`](message.txt).
-    - Reads detected problem IDs from `detected_problem_ids.json`.
-    - Reads detected project IDs from `detected_project_ids.json`.
-- **Process:**
-    - Fetches detailed information about the detected problems and the top 3-5 most similar projects (based on similarity scores from Stage 2) from `donation.db`.
-    - Uses a Large Language Model (LLM) to generate a response in Ukrainian.
-    - The response summarizes the identified problems and recommends the relevant projects, including their names, descriptions, and contact information.
-- **Output:** Prints the final generated response to standard output.
+4.  **Database:**
+    Ensure the `donation.db` file exists in the project root directory. This database is used to store information for problem detection and project matching. (Further instructions on populating or managing the database may be needed depending on the project setup).
 
-## How Everything is Computed
+## Usage
 
-The core computations involve:
+To run the Telegram bot, execute the following command from the project root directory:
 
-1.  **LLM-based Problem Extraction:** An LLM analyzes text to identify and categorize problems.
-2.  **Embedding Generation:** OpenAI's embedding model converts text data (problem names, solution names, project descriptions) into numerical vectors that capture semantic meaning.
-3.  **Vector Similarity Search (KNN):** The `vec0` extension in SQLite is used to perform efficient K-Nearest Neighbors searches on the embedding vectors. This allows the project to find the most semantically similar solutions for identified problems and the most similar solutions associated with projects. The similarity scores from these searches are crucial for ranking and selecting the most relevant projects in the final stage.
-4.  **LLM-based Response Generation:** A final LLM is used to synthesize the original message, detected problems, and relevant project information into a coherent and helpful response in Ukrainian.
+```bash
+python3 -m src.telegram.bot
+```
 
-This workflow ensures that the project can automatically process social media posts, understand the underlying issues, and connect users with potentially relevant projects or solutions based on semantic similarity.
+This will start the bot, and it will begin polling for new messages.
+
+## Project Structure
+
+*   `cli.py`: Command-line interface entry point (if applicable).
+*   `requirements.txt`: Lists project dependencies.
+*   `donation.db`: The SQLite database file used by the project.
+*   `src/`: Contains the main source code.
+    *   `__init__.py`: Initializes the `src` package.
+    *   `embed_and_match.py`: Handles embedding computation and matching.
+    *   `output_generator.py`: Generates the final bot reply.
+    *   `pipeline.py`: Orchestrates the main workflow.
+    *   `problem_detector.py`: Detects problems in user messages.
+    *   `telegram/`: Contains Telegram bot specific code.
+        *   `__init__.py`: Initializes the `telegram` package.
+        *   `bot.py`: The main Telegram bot application.
+        *   `config.py`: Configuration settings for the bot (e.g., token).
+        *   `handlers.py`: Defines handlers for Telegram messages and commands.

@@ -1,12 +1,12 @@
+# src/problem_detector.py
+
 import os
 import json
 import sqlite3
 import time
 import openai
-from pathlib import Path
 
-# Bring in any constants and helper functions from 1_problem_detector.py…
-DB_FILE = "donation.db"
+# Bring in any constants and helper functions from your original module…
 MODEL = "gpt-4"
 MAX_RETRIES = 2
 REQUEST_DELAY_SECONDS = 1
@@ -102,8 +102,10 @@ def call_llm(prompt: str) -> str:
                 max_tokens=512,
             )
             txt = resp.choices[0].message.content.strip()
-            if txt.startswith("```json"): txt = txt[7:]
-            if txt.endswith("```"):     txt = txt[:-3]
+            if txt.startswith("```json"):
+                txt = txt.split("```json", 1)[1]
+            if txt.endswith("```"):
+                txt = txt.rsplit("```", 1)[0]
             return txt.strip()
         except Exception as e:
             if attempt == MAX_RETRIES:
@@ -114,34 +116,35 @@ def robust_json_load(raw: str, schema_hint: str) -> dict:
     for attempt in range(MAX_RETRIES + 1):
         try:
             txt = raw.strip()
-            if txt.startswith("```json"): txt = txt[7:]
-            if txt.endswith("```"):     txt = txt[:-3]
+            if txt.startswith("```json"):
+                txt = txt.split("```json", 1)[1]
+            if txt.endswith("```"):
+                txt = txt.rsplit("```", 1)[0]
             return json.loads(txt)
         except json.JSONDecodeError as e:
             if attempt == MAX_RETRIES:
                 raise RuntimeError(f"JSON parse failed: {e}")
             repair = (
-                f"Previous response invalid JSON ({e}).\n"
-                f"JSON was:\n```json\n{raw}\n```\n"
-                f"Provide only valid JSON matching:\n{schema_hint}"
+                f"Попередня відповідь невалидний JSON ({e}).\n"
+                f"JSON був:\n```json\n{raw}\n```\n"
+                f"Надайте тільки валідний JSON за схемою:\n{schema_hint}"
             )
             raw = call_llm(repair)
 
-def detect_problems_llm(message: str) -> list:
-    # Build a few-shot conversation with examples
+def detect_problems_llm(message: str) -> list[dict]:
+    # Build few-shot conversation
     messages = [
         {
             "role": "system",
-            "content": "Ти — експерт з аналізу дописів в соціальних мережах українською мовою. Витягни глибинні соціальні чи психологічні проблеми, які висловлює автор."
+            "content": (
+                "Ти — експерт з аналізу дописів в соціальних мережах українською мовою. "
+                "Витягни глибинні соціальні чи психологічні проблеми, які висловлює автор."
+            )
         }
     ]
     for ex in EXAMPLES:
-        messages.append({"role": "user", "content": f"Пост:\n{ex['post']}"})
-        messages.append({
-            "role": "assistant",
-            "content": json.dumps(ex["json"], ensure_ascii=False, indent=2)
-        })
-    # Now append the real user message plus the schema hint
+        messages.append({"role": "user",      "content": f"Пост:\n{ex['post']}"})
+        messages.append({"role": "assistant", "content": json.dumps(ex["json"], ensure_ascii=False)})
     messages.append({
         "role": "user",
         "content": f"Пост:\n{message}\n\n{SCHEMA_HINT}"
@@ -153,11 +156,10 @@ def detect_problems_llm(message: str) -> list:
         temperature=0.0,
         max_tokens=500,
     )
-    raw = resp.choices[0].message.content
-    out = robust_json_load(raw, SCHEMA_HINT)
+    out = robust_json_load(resp.choices[0].message.content, SCHEMA_HINT)
     return out.get("problems", [])
 
-def upsert_problem(cursor, name: str, context: str) -> int:
+def upsert_problem(cursor: sqlite3.Cursor, name: str, context: str) -> int:
     cursor.execute(
         "SELECT problem_id FROM problems WHERE name=? AND context=? LIMIT 1",
         (name, context)
@@ -171,32 +173,37 @@ def upsert_problem(cursor, name: str, context: str) -> int:
     )
     return cursor.lastrowid
 
-def detect_problems(db_file: str, message_file: str) -> list[int]:
+def detect_problems(db_file: str, message_id: int) -> list[int]:
+    """
+    1) Loads `text` from messages WHERE message_id = ?
+    2) Calls the LLM to detect problems
+    3) Upserts each problem into `problems` table
+    4) Returns a list of problem_id
+    """
     openai.api_key = os.getenv("OPENAI_API_KEY")
     if not openai.api_key:
         raise RuntimeError("OPENAI_API_KEY not set")
 
-    # Read user message
-    text = Path(message_file).read_text(encoding="utf-8").strip()
-
-    # Connect to the database
     conn = sqlite3.connect(db_file)
     cur = conn.cursor()
 
-    print(f"Detecting problems in message: {text}\n")
+    # 1) Fetch the message text
+    cur.execute("SELECT text FROM messages WHERE message_id = ?", (message_id,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError(f"Message ID {message_id} not found in DB")
+    text = row[0].strip()
+
+    # 2) LLM → problem dicts
     problems = detect_problems_llm(text)
-    print("Detected problems:")
-    ids = []
+
+    # 3) Upsert into problems table
+    ids: list[int] = []
     for p in problems:
         pid = upsert_problem(cur, p["name"], p["context"])
         ids.append(pid)
-        print(f"  → Problem ID {pid}: {p['name']}")
 
     conn.commit()
     conn.close()
-
-    # At the end:
-    return ids  # list of ints
-
-# Note: The main execution block from 1_problem_detector.py is removed
-# as the logic is now encapsulated in the detect_problems function.
+    return ids

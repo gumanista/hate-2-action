@@ -1,32 +1,51 @@
-# src/cli.py
+#!/usr/bin/env python3
+import os
+import sqlite3
+import sys
+import argparse
 
-import typer
-from src.problem_detector import detect_problems
-from src.embed_and_match  import match_embeddings
-from src.output_generator import generate_output
+from src.pipeline import process_message
+from src.telegram.config import Config
 
-app = typer.Typer()
+DB_PATH = getattr(Config, "DB_PATH",
+                  os.getenv("DB_PATH", "donation.db"))
 
-@app.command()
-def detect(
-    db_file:     str = "donation.db",
-    message_file:str = "message.txt"
-):
-    ids = detect_problems(db_file, message_file)
-    typer.echo(f"🔍 Detected problem IDs: {ids}")
+def cmd_run_id(args):
+    reply = process_message(args.message_id, db_file=DB_PATH)
+    print(reply)
 
-@app.command()
-def run(
-    db_file:     str = "donation.db",
-    message_file:str = "message.txt",
-    k:           int = 10,
-    top_n:       int = 5
-):
-    # Full one-click pipeline
-    p_ids         = detect_problems(db_file, message_file)
-    sol_ids, pr_ids = match_embeddings(db_file, p_ids, k=k)
-    reply         = generate_output(db_file, message_file, p_ids, pr_ids, top_n=top_n)
-    typer.echo(reply)
+def cmd_run(args):
+    conn = sqlite3.connect(DB_PATH)
+    cur  = conn.cursor()
+    cur.execute(
+        "INSERT INTO messages (user_id, user_username, chat_title, text) VALUES (?, ?, ?, ?)",
+        (args.user_id, args.username, args.chat_title, args.text)
+    )
+    message_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+
+    reply = process_message(message_id, db_file=DB_PATH)
+    print(reply)
+    
+
+def main():
+    parser = argparse.ArgumentParser(prog="cli.py")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    p1 = subparsers.add_parser("run-id", help="Process an existing message by ID")
+    p1.add_argument("message_id", type=int, help="ID of the message in the DB")
+    p1.set_defaults(func=cmd_run_id)
+
+    p2 = subparsers.add_parser("run", help="Insert & process a new message")
+    p2.add_argument("text",      help="Raw message text to insert & process")
+    p2.add_argument("--user-id",   type=int, default=0,   help="User ID to store")
+    p2.add_argument("--username",  default="", help="Username to store")
+    p2.add_argument("--chat-title",default="", help="Chat title to store")
+    p2.set_defaults(func=cmd_run)
+
+    args = parser.parse_args()
+    args.func(args)
 
 if __name__ == "__main__":
-    app()
+    main()
