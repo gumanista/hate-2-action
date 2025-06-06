@@ -2,9 +2,9 @@
 
 import os
 import json
-import sqlite3
 import time
 from typing import List, Dict
+from src.telegram.database import Database
 
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage, AIMessage
@@ -172,25 +172,6 @@ def detect_problems_llm(message: str) -> List[Dict[str, str]]:
             time.sleep(REQUEST_DELAY_SECONDS)
 
 
-def upsert_problem(cursor: sqlite3.Cursor, name: str, context: str) -> int:
-    """
-    If a problem with the same (name, context) exists already, return its ID;
-    otherwise, insert a new row and return the new problem_id.
-    """
-    cursor.execute(
-        "SELECT problem_id FROM problems WHERE name=? AND context=? LIMIT 1",
-        (name, context)
-    )
-    row = cursor.fetchone()
-    if row:
-        return row[0]
-    cursor.execute(
-        "INSERT INTO problems (name, context) VALUES (?, ?)",
-        (name, context)
-    )
-    return cursor.lastrowid
-
-
 def detect_problems(db_file: str, message_id: int) -> List[int]:
     """
     1) Fetch the message text by message_id from `messages`.
@@ -202,26 +183,20 @@ def detect_problems(db_file: str, message_id: int) -> List[int]:
     if not openai_key:
         raise RuntimeError("OPENAI_API_KEY not set")
 
-    conn = sqlite3.connect(db_file)
-    cur = conn.cursor()
+    with Database(db_file) as db:
+        # 1) Fetch original message text
+        text = db.get_message_by_id(message_id)
+        if not text:
+            raise ValueError(f"Message ID {message_id} not found in DB")
 
-    # 1) Fetch original message text
-    cur.execute("SELECT text FROM messages WHERE message_id = ?", (message_id,))
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError(f"Message ID {message_id} not found in DB")
-    text = row[0].strip()
+        # 2) Call LLM → list of problem dicts
+        problems = detect_problems_llm(text)
 
-    # 2) Call LLM → list of problem dicts
-    problems = detect_problems_llm(text)
+        # 3) Upsert into `problems` and collect problem_ids
+        ids: List[int] = []
+        for p in problems:
+            pid = db.upsert_problem(p["name"], p["context"])
+            if pid:
+                ids.append(pid)
 
-    # 3) Upsert into `problems` and collect problem_ids
-    ids: List[int] = []
-    for p in problems:
-        pid = upsert_problem(cur, p["name"], p["context"])
-        ids.append(pid)
-
-    conn.commit()
-    conn.close()
     return ids

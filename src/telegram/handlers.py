@@ -1,10 +1,10 @@
 import re
 import logging
-import sqlite3
 from telegram import Update
 from telegram.ext import ContextTypes
 from src.pipeline import process_message
 from .config import Config
+from .database import Database
 
 logger = logging.getLogger(__name__)
 
@@ -38,25 +38,15 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     cleaned = re.sub(r"@\w+", "", text).strip()
 
     # persist incoming message
-    try:
-        conn = sqlite3.connect(Config.DB_PATH)
-        cur = conn.cursor()
-        user_id = msg.from_user.id
-        user_username = msg.from_user.username or f"user_{user_id}"
-        chat_title = None if msg.chat.type == 'private' else msg.chat.title
-        cur.execute(
-            "INSERT INTO messages (user_id, user_username, chat_title, text) "
-            "VALUES (?, ?, ?, ?)",
-            (user_id, user_username, chat_title, cleaned)
-        )
-        message_id = cur.lastrowid
-        conn.commit()
-    except sqlite3.Error as e:
-        logger.error("DB insert failed: %s", e)
+    user_id = msg.from_user.id
+    user_username = msg.from_user.username or f"user_{user_id}"
+    chat_title = None if msg.chat.type == "private" else msg.chat.title
+    with Database(Config.DB_PATH) as db:
+        message_id = db.add_message(user_id, user_username, chat_title, cleaned)
+
+    if not message_id:
         await msg.reply_text("⚠️ Вибачте, не вдалось зберегти повідомлення.")
         return
-    finally:
-        conn.close()
 
     # run the 3-stage pipeline
     try:

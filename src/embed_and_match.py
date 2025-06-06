@@ -1,63 +1,20 @@
 # src/embed_and_match.py
 
-import sqlite3
 import json
 import os
 from typing import List, Tuple
 
 from langchain_community.embeddings import OpenAIEmbeddings
+from src.telegram.database import Database
 
 VECTOR_DIM = 1536  # Embedding dimension size for OpenAI embeddings
 
-def _load_vec0_extension(conn):
-    # Load the installed sqlite-vec package
-    import sqlite_vec
-    sqlite_vec.load(conn)
-
-
-def _create_vec_tables_if_missing(conn: sqlite3.Connection):
-    """
-    Creates the three vec0 virtual tables if they don't already exist:
-      • vec_solutions  (solution_id INTEGER PRIMARY KEY, embedding float[VECTOR_DIM])
-      • vec_projects   (project_id INTEGER PRIMARY KEY, embedding float[VECTOR_DIM])
-      • vec_problems   (problem_id  INTEGER PRIMARY KEY, embedding float[VECTOR_DIM])
-    """
-    cur = conn.cursor()
-
-    # Create tables for vec_solutions, vec_projects, and vec_problems
-    cur.execute(f"""
-        CREATE VIRTUAL TABLE IF NOT EXISTS vec_solutions
-        USING vec0(
-            solution_id   INTEGER PRIMARY KEY,
-            embedding     float[{VECTOR_DIM}]
-        );
-    """)
-
-    cur.execute(f"""
-        CREATE VIRTUAL TABLE IF NOT EXISTS vec_projects
-        USING vec0(
-            project_id    INTEGER PRIMARY KEY,
-            embedding     float[{VECTOR_DIM}]
-        );
-    """)
-
-    cur.execute(f"""
-        CREATE VIRTUAL TABLE IF NOT EXISTS vec_problems
-        USING vec0(
-            problem_id    INTEGER PRIMARY KEY,
-            embedding     float[{VECTOR_DIM}]
-        );
-    """)
-
-    conn.commit()
-
-
-def _populate_solutions_and_projects(conn: sqlite3.Connection, embedder: OpenAIEmbeddings):
+def _populate_solutions_and_projects(db: Database, embedder: OpenAIEmbeddings):
     """
     On the first run, compute embeddings for *all* rows in `solutions` and `projects`,
     and insert them into vec_solutions / vec_projects.
     """
-    cur = conn.cursor()
+    cur = db.conn.cursor()
 
     # Populate vec_solutions if empty
     cur.execute("SELECT COUNT(*) FROM vec_solutions;")
@@ -71,7 +28,7 @@ def _populate_solutions_and_projects(conn: sqlite3.Connection, embedder: OpenAIE
                 "INSERT OR REPLACE INTO vec_solutions(solution_id, embedding) VALUES (?, json(?));",
                 (solution_id, json.dumps(vec))
             )
-        conn.commit()
+        db.conn.commit()
 
     # Populate vec_projects if empty
     cur.execute("SELECT COUNT(*) FROM vec_projects;")
@@ -85,15 +42,15 @@ def _populate_solutions_and_projects(conn: sqlite3.Connection, embedder: OpenAIE
                 "INSERT OR REPLACE INTO vec_projects(project_id, embedding) VALUES (?, json(?));",
                 (project_id, json.dumps(vec))
             )
-        conn.commit()
+        db.conn.commit()
 
 
-def _populate_projects_solutions(conn: sqlite3.Connection, k_proj: int = 5):
+def _populate_projects_solutions(db: Database, k_proj: int = 5):
     """
     On the first run (or whenever projects_solutions is empty), match *every* solution
     to its top-k_proj projects and insert into projects_solutions.
     """
-    cur = conn.cursor()
+    cur = db.conn.cursor()
 
     # Check if projects_solutions is already populated
     cur.execute("SELECT COUNT(*) FROM projects_solutions;")
@@ -122,11 +79,11 @@ def _populate_projects_solutions(conn: sqlite3.Connection, k_proj: int = 5):
             """
             cur.executescript(sql)
 
-        conn.commit()
+        db.conn.commit()
 
 
 def _embed_and_match_new_problems(
-    conn: sqlite3.Connection,
+    db: Database,
     embedder: OpenAIEmbeddings,
     problem_ids: List[int],
     k: int = 5  # Top 5 solutions to match
@@ -137,7 +94,7 @@ def _embed_and_match_new_problems(
     2) Run a vec0 KNN query (k nearest solutions), insert into problems_solutions.
     Returns a flat list of *all* solution_ids matched to these problems.
     """
-    cur = conn.cursor()
+    cur = db.conn.cursor()
     matched_solution_ids = []
 
     for pid in problem_ids:
@@ -154,7 +111,7 @@ def _embed_and_match_new_problems(
             "INSERT OR REPLACE INTO vec_problems(problem_id, embedding) VALUES (?, json(?));",
             (pid, json.dumps(vec))
         )
-        conn.commit()
+        db.conn.commit()
 
         # KNN query: “problem” → top k “solutions”
         sql = f"""
@@ -174,7 +131,7 @@ def _embed_and_match_new_problems(
             AND k = {k};  -- Select top k solutions
         """
         cur.executescript(sql)
-        conn.commit()
+        db.conn.commit()
 
         # Collect top k solution_ids
         cur.execute(
@@ -186,7 +143,7 @@ def _embed_and_match_new_problems(
 
         # Mark problem as processed
         cur.execute("UPDATE problems SET is_processed = 1 WHERE problem_id = ?;", (pid,))
-        conn.commit()
+        db.conn.commit()
 
     # Deduplicate while preserving order
     seen = set()
@@ -200,14 +157,14 @@ def _embed_and_match_new_problems(
 
 
 def _collect_project_ids_for_solutions(
-    conn: sqlite3.Connection,
+    db: Database,
     solution_ids: List[int],
     top_n: int = 5  # Top 5 projects
 ) -> List[int]:
     if not solution_ids:
         return []
 
-    cur = conn.cursor()
+    cur = db.conn.cursor()
     placeholders = ",".join("?" for _ in solution_ids)
 
     # Fetch all matching rows, ordered by similarity_score DESC
@@ -245,29 +202,23 @@ def match_embeddings(
          • sol_ids = all solution_ids matched to the given problem_ids (deduped, in descending similarity order).
          • proj_ids = all project_ids matched to those solution_ids (deduped, in descending similarity order).
     """
-    conn = sqlite3.connect(db_path)
-    conn.enable_load_extension(True)
-    _load_vec0_extension(conn)
-    conn.enable_load_extension(False)
+    with Database(db_path) as db:
+        # Create the necessary tables if missing
+        db.create_vec_tables_if_missing()
 
-    # Create the necessary tables if missing
-    _create_vec_tables_if_missing(conn)
+        # Initialize the embedding model
+        embedder = OpenAIEmbeddings()
 
-    # Initialize the embedding model
-    embedder = OpenAIEmbeddings()
+        # First-run: populate all solution/project embeddings if needed
+        _populate_solutions_and_projects(db, embedder)
 
-    # First-run: populate all solution/project embeddings if needed
-    _populate_solutions_and_projects(conn, embedder)
+        # First-run: populate projects_solutions if needed
+        _populate_projects_solutions(db, k_proj=3)
 
-    # First-run: populate projects_solutions if needed
-    _populate_projects_solutions(conn, k_proj=3)
+        # For each newly detected problem, embed & match → solutions
+        sol_ids = _embed_and_match_new_problems(db, embedder, problem_ids, k)
 
-    # For each newly detected problem, embed & match → solutions
-    sol_ids = _embed_and_match_new_problems(conn, embedder, problem_ids, k)
+        # Collect all matching project_ids for the selected solutions
+        proj_ids = _collect_project_ids_for_solutions(db, sol_ids, top_n=k)
 
-    # Collect all matching project_ids for the selected solutions
-    proj_ids = _collect_project_ids_for_solutions(conn, sol_ids, top_n=k)
-
-    conn.close()
     return sol_ids, proj_ids
-

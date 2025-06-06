@@ -1,8 +1,8 @@
 import os
-import sqlite3
 from typing import List, Tuple
 
 from langchain.chat_models import ChatOpenAI
+from src.telegram.database import Database
 from langchain.schema import SystemMessage, HumanMessage
 
 DEFAULT_TOP_N = 5
@@ -33,42 +33,17 @@ def generate_output(
     if not openai_key:
         raise RuntimeError("OPENAI_API_KEY environment variable not set")
 
-    conn = sqlite3.connect(db_file)
-    cur = conn.cursor()
+    with Database(db_file) as db:
+        # ── 1) Fetch original message text ─────────────────────────────────────────
+        message_text = db.get_message_by_id(message_id)
+        if not message_text:
+            raise ValueError(f"No message found with message_id = {message_id}")
 
-    # ── 1) Fetch original message text ─────────────────────────────────────────
-    cur.execute("SELECT text FROM messages WHERE message_id = ?", (message_id,))
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError(f"No message found with message_id = {message_id}")
-    message_text = row[0]
+        # ── 2) Fetch problem names & contexts ─────────────────────────────────────
+        problems_data = db.get_problems_by_ids(problem_ids)
 
-    # ── 2) Fetch problem names & contexts ─────────────────────────────────────
-    problems_data: List[Tuple[str, str]] = []
-    if problem_ids:
-        placeholder = ",".join("?" for _ in problem_ids)
-        query = f"SELECT name, context FROM problems WHERE problem_id IN ({placeholder})"
-        cur.execute(query, tuple(problem_ids))
-        problems_data = cur.fetchall()
-    else:
-        problems_data = []
-
-    # ── 3) Fetch project details ──────────────────────────────────────────────
-    projects_data: List[Tuple[str, str, str, str]] = []
-    if project_ids:
-        selected_ids = project_ids[:top_n]
-        placeholder = ",".join("?" for _ in selected_ids)
-        query = (
-            f"SELECT name, description, website, contact_email "
-            f"FROM projects WHERE project_id IN ({placeholder})"
-        )
-        cur.execute(query, tuple(selected_ids))
-        projects_data = cur.fetchall()
-    else:
-        projects_data = []
-
-    conn.close()
+        # ── 3) Fetch project details ──────────────────────────────────────────────
+        projects_data = db.get_projects_by_ids(project_ids, top_n)
 
     # ── 4) Build the LLM prompt ────────────────────────────────────────────────
     prompt_lines: List[str] = []
@@ -123,14 +98,8 @@ def generate_output(
     reply_text = response.content.strip()
 
     # ── 6) Insert reply into `responses` ─────────────────────────────────────
-    conn2 = sqlite3.connect(db_file)
-    cur2 = conn2.cursor()
-    cur2.execute(
-        "INSERT INTO responses(message_id, text) VALUES (?, ?)",
-        (message_id, reply_text)
-    )
-    conn2.commit()
-    conn2.close()
+    with Database(db_file) as db:
+        db.add_response(message_id, reply_text)
 
     return reply_text
 
