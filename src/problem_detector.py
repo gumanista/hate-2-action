@@ -1,13 +1,15 @@
-# src/problem_detector.py
+# problem_detector.py
 
 import os
 import json
 import sqlite3
 import time
-import openai
+from typing import List, Dict
 
-# Bring in any constants and helper functions from your original module…
-MODEL = "gpt-4"
+from langchain.chat_models import ChatOpenAI
+from langchain.schema import SystemMessage, HumanMessage, AIMessage
+
+MODEL_NAME = "gpt-4"
 MAX_RETRIES = 2
 REQUEST_DELAY_SECONDS = 1
 
@@ -92,16 +94,17 @@ SCHEMA_HINT = '''
 }
 '''
 
+
 def call_llm(prompt: str) -> str:
+    """
+    Uses LangChain’s ChatOpenAI to send a single system‐message prompt.
+    Retries up to MAX_RETRIES on errors, with a short delay.
+    """
+    llm = ChatOpenAI(model_name=MODEL_NAME, temperature=0.1)
     for attempt in range(MAX_RETRIES + 1):
         try:
-            resp = openai.chat.completions.create(
-                model=MODEL,
-                messages=[{"role": "system", "content": prompt}],
-                temperature=0.1,
-                max_tokens=512,
-            )
-            txt = resp.choices[0].message.content.strip()
+            response: AIMessage = llm([SystemMessage(content=prompt)])
+            txt = response.content.strip()
             if txt.startswith("```json"):
                 txt = txt.split("```json", 1)[1]
             if txt.endswith("```"):
@@ -109,10 +112,15 @@ def call_llm(prompt: str) -> str:
             return txt.strip()
         except Exception as e:
             if attempt == MAX_RETRIES:
-                raise RuntimeError(f"LLM failed: {e}")
+                raise RuntimeError(f"LLM failed after {MAX_RETRIES} retries: {e}")
             time.sleep(REQUEST_DELAY_SECONDS)
 
+
 def robust_json_load(raw: str, schema_hint: str) -> dict:
+    """
+    Attempts to parse `raw` as JSON. On failure, asks the LLM (via call_llm) to repair
+    the JSON to fit SCHEMA_HINT, retrying up to MAX_RETRIES.
+    """
     for attempt in range(MAX_RETRIES + 1):
         try:
             txt = raw.strip()
@@ -123,43 +131,52 @@ def robust_json_load(raw: str, schema_hint: str) -> dict:
             return json.loads(txt)
         except json.JSONDecodeError as e:
             if attempt == MAX_RETRIES:
-                raise RuntimeError(f"JSON parse failed: {e}")
-            repair = (
+                raise RuntimeError(f"JSON parse failed after {MAX_RETRIES} retries: {e}")
+            repair_prompt = (
                 f"Попередня відповідь невалидний JSON ({e}).\n"
                 f"JSON був:\n```json\n{raw}\n```\n"
                 f"Надайте тільки валідний JSON за схемою:\n{schema_hint}"
             )
-            raw = call_llm(repair)
+            raw = call_llm(repair_prompt)
 
-def detect_problems_llm(message: str) -> list[dict]:
-    # Build few-shot conversation
+
+def detect_problems_llm(message: str) -> List[Dict[str, str]]:
+    """
+    Builds a few‐shot prompt (with EXAMPLES & SCHEMA_HINT), sends it to gpt‐4 via LangChain,
+    and returns a list of {"name", "context"} dicts.
+    """
+    llm = ChatOpenAI(model_name=MODEL_NAME, temperature=0.0)
     messages = [
-        {
-            "role": "system",
-            "content": (
-                "Ти — експерт з аналізу дописів в соціальних мережах українською мовою. "
-                "Витягни глибинні соціальні чи психологічні проблеми, які висловлює автор."
-            )
-        }
+        SystemMessage(content=(
+            "Ти — експерт з аналізу дописів в соціальних мережах українською мовою. "
+            "Витягни глибинні соціальні чи психологічні проблеми, які висловлює автор."
+        ))
     ]
-    for ex in EXAMPLES:
-        messages.append({"role": "user",      "content": f"Пост:\n{ex['post']}"})
-        messages.append({"role": "assistant", "content": json.dumps(ex["json"], ensure_ascii=False)})
-    messages.append({
-        "role": "user",
-        "content": f"Пост:\n{message}\n\n{SCHEMA_HINT}"
-    })
 
-    resp = openai.chat.completions.create(
-        model=MODEL,
-        messages=messages,
-        temperature=0.0,
-        max_tokens=500,
-    )
-    out = robust_json_load(resp.choices[0].message.content, SCHEMA_HINT)
-    return out.get("problems", [])
+    # Insert example pairs
+    for ex in EXAMPLES:
+        messages.append(HumanMessage(content=f"Пост:\n{ex['post']}"))
+        messages.append(AIMessage(content=json.dumps(ex["json"], ensure_ascii=False)))
+
+    # Finally, the actual user post + schema hint
+    messages.append(HumanMessage(content=f"Пост:\n{message}\n\n{SCHEMA_HINT}"))
+
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            response: AIMessage = llm(messages)
+            out = robust_json_load(response.content, SCHEMA_HINT)
+            return out.get("problems", [])
+        except Exception as e:
+            if attempt == MAX_RETRIES:
+                raise RuntimeError(f"LLM detection failed after {MAX_RETRIES} retries: {e}")
+            time.sleep(REQUEST_DELAY_SECONDS)
+
 
 def upsert_problem(cursor: sqlite3.Cursor, name: str, context: str) -> int:
+    """
+    If a problem with the same (name, context) exists already, return its ID;
+    otherwise, insert a new row and return the new problem_id.
+    """
     cursor.execute(
         "SELECT problem_id FROM problems WHERE name=? AND context=? LIMIT 1",
         (name, context)
@@ -173,21 +190,22 @@ def upsert_problem(cursor: sqlite3.Cursor, name: str, context: str) -> int:
     )
     return cursor.lastrowid
 
-def detect_problems(db_file: str, message_id: int) -> list[int]:
+
+def detect_problems(db_file: str, message_id: int) -> List[int]:
     """
-    1) Loads `text` from messages WHERE message_id = ?
-    2) Calls the LLM to detect problems
-    3) Upserts each problem into `problems` table
-    4) Returns a list of problem_id
+    1) Fetch the message text by message_id from `messages`.
+    2) Run detect_problems_llm(...) to get a list of {"name", "context"}.
+    3) Upsert each problem into `problems(...)`.
+    4) Return a list of all problem_id values inserted/updated.
     """
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    if not openai.api_key:
+    openai_key = os.getenv("OPENAI_API_KEY")
+    if not openai_key:
         raise RuntimeError("OPENAI_API_KEY not set")
 
     conn = sqlite3.connect(db_file)
     cur = conn.cursor()
 
-    # 1) Fetch the message text
+    # 1) Fetch original message text
     cur.execute("SELECT text FROM messages WHERE message_id = ?", (message_id,))
     row = cur.fetchone()
     if not row:
@@ -195,11 +213,11 @@ def detect_problems(db_file: str, message_id: int) -> list[int]:
         raise ValueError(f"Message ID {message_id} not found in DB")
     text = row[0].strip()
 
-    # 2) LLM → problem dicts
+    # 2) Call LLM → list of problem dicts
     problems = detect_problems_llm(text)
 
-    # 3) Upsert into problems table
-    ids: list[int] = []
+    # 3) Upsert into `problems` and collect problem_ids
+    ids: List[int] = []
     for p in problems:
         pid = upsert_problem(cur, p["name"], p["context"])
         ids.append(pid)

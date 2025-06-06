@@ -69,6 +69,12 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     # send the generated reply
     await msg.reply_text(reply_text)
 
-def error_handler(update: object, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    """Log exceptions."""
-    logger.error("Update %r caused error %r", update, ctx.error)
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log the error and send a telegram message to notify the developer."""
+    logger.error("Exception while handling an update:", exc_info=context.error)
+
+    if update and update.effective_message:
+        # Send a message to the user
+        await update.effective_message.reply_text(
+            "⚠️ Сталася помилка при обробці повідомлення. Спробуйте пізніше."
+        )

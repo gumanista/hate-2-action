@@ -1,246 +1,273 @@
 # src/embed_and_match.py
 
-import os
 import sqlite3
-import sqlite_vec
-import openai
-from typing import Tuple, List
+import json
+import os
+from typing import List, Tuple
 
-# Constants
-DIM = 1536
-EMBEDDING_MODEL = "text-embedding-3-small"
-K = 5  # Default number of neighbors to fetch
+from langchain_community.embeddings import OpenAIEmbeddings
 
-def generate_embedding(text: str) -> list:
+VECTOR_DIM = 1536  # Embedding dimension size for OpenAI embeddings
+
+def _load_vec0_extension(conn):
+    # Load the installed sqlite-vec package
+    import sqlite_vec
+    sqlite_vec.load(conn)
+
+
+def _create_vec_tables_if_missing(conn: sqlite3.Connection):
     """
-    Generate an embedding for the given text using OpenAI's Embeddings API.
-    Returns a list of DIM floats.
+    Creates the three vec0 virtual tables if they don't already exist:
+      • vec_solutions  (solution_id INTEGER PRIMARY KEY, embedding float[VECTOR_DIM])
+      • vec_projects   (project_id INTEGER PRIMARY KEY, embedding float[VECTOR_DIM])
+      • vec_problems   (problem_id  INTEGER PRIMARY KEY, embedding float[VECTOR_DIM])
     """
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    if not openai.api_key:
-        raise RuntimeError("OPENAI_API_KEY environment variable not set")
-
-    resp = openai.embeddings.create(model=EMBEDDING_MODEL, input=text)
-    emb = resp.data[0].embedding
-    if len(emb) != DIM:
-        raise ValueError(f"Unexpected embedding size: got {len(emb)}, expected {DIM}")
-    return emb
-
-def create_vec_tables(conn: sqlite3.Connection, dim: int = DIM):
     cur = conn.cursor()
+
+    # Create tables for vec_solutions, vec_projects, and vec_problems
     cur.execute(f"""
-    CREATE VIRTUAL TABLE IF NOT EXISTS problems_embeddings
-    USING vec0(
-      problem_id INTEGER PRIMARY KEY,
-      embedding  FLOAT[{dim}]
-    );
+        CREATE VIRTUAL TABLE IF NOT EXISTS vec_solutions
+        USING vec0(
+            solution_id   INTEGER PRIMARY KEY,
+            embedding     float[{VECTOR_DIM}]
+        );
     """)
+
     cur.execute(f"""
-    CREATE VIRTUAL TABLE IF NOT EXISTS solutions_embeddings
-    USING vec0(
-      solution_id INTEGER PRIMARY KEY,
-      embedding    FLOAT[{dim}]
-    );
+        CREATE VIRTUAL TABLE IF NOT EXISTS vec_projects
+        USING vec0(
+            project_id    INTEGER PRIMARY KEY,
+            embedding     float[{VECTOR_DIM}]
+        );
     """)
+
     cur.execute(f"""
-    CREATE VIRTUAL TABLE IF NOT EXISTS projects_embeddings
-    USING vec0(
-      project_id INTEGER PRIMARY KEY,
-      embedding   FLOAT[{dim}]
-    );
+        CREATE VIRTUAL TABLE IF NOT EXISTS vec_problems
+        USING vec0(
+            problem_id    INTEGER PRIMARY KEY,
+            embedding     float[{VECTOR_DIM}]
+        );
     """)
+
     conn.commit()
 
-def populate_embeddings(conn: sqlite3.Connection) -> None:
+
+def _populate_solutions_and_projects(conn: sqlite3.Connection, embedder: OpenAIEmbeddings):
+    """
+    On the first run, compute embeddings for *all* rows in `solutions` and `projects`,
+    and insert them into vec_solutions / vec_projects.
+    """
     cur = conn.cursor()
-    # ─── Problems ─────────────────
-    cur.execute("SELECT problem_id FROM problems_embeddings;")
-    existing_p = {row[0] for row in cur.fetchall()}
-    cur.execute("SELECT problem_id, context FROM problems;")
-    for pid, ctx in cur:
-        if pid in existing_p:
-            continue
-        blob = sqlite_vec.serialize_float32(generate_embedding(ctx or ""))
-        cur.execute(
-            "INSERT INTO problems_embeddings(problem_id, embedding) VALUES (?, ?)",
-            (pid, blob),
-        )
-    conn.commit()
 
-    # ─── Solutions ─────────────────
-    cur.execute("SELECT solution_id FROM solutions_embeddings;")
-    existing_s = {row[0] for row in cur.fetchall()}
-    cur.execute("SELECT solution_id, context FROM solutions;")
-    for sid, ctx in cur:
-        if sid in existing_s:
-            continue
-        blob = sqlite_vec.serialize_float32(generate_embedding(ctx or ""))
-        cur.execute(
-            "INSERT INTO solutions_embeddings(solution_id, embedding) VALUES (?, ?)",
-            (sid, blob),
-        )
-    conn.commit()
+    # Populate vec_solutions if empty
+    cur.execute("SELECT COUNT(*) FROM vec_solutions;")
+    count_vs = cur.fetchone()[0]
+    if count_vs == 0:
+        cur.execute("SELECT solution_id, context FROM solutions;")
+        rows = cur.fetchall()
+        for solution_id, context_text in rows:
+            vec = embedder.embed_documents([context_text])[0]
+            cur.execute(
+                "INSERT OR REPLACE INTO vec_solutions(solution_id, embedding) VALUES (?, json(?));",
+                (solution_id, json.dumps(vec))
+            )
+        conn.commit()
 
-    # ─── Projects ─────────────────
-    cur.execute("SELECT project_id FROM projects_embeddings;")
-    existing_pr = {row[0] for row in cur.fetchall()}
-    cur.execute("SELECT project_id, description FROM projects;")
-    for prid, desc in cur:
-        if prid in existing_pr:
-            continue
-        blob = sqlite_vec.serialize_float32(generate_embedding(desc or ""))
-        cur.execute(
-            "INSERT INTO projects_embeddings(project_id, embedding) VALUES (?, ?)",
-            (prid, blob),
-        )
-    conn.commit()
+    # Populate vec_projects if empty
+    cur.execute("SELECT COUNT(*) FROM vec_projects;")
+    count_vp = cur.fetchone()[0]
+    if count_vp == 0:
+        cur.execute("SELECT project_id, description FROM projects;")
+        rows = cur.fetchall()
+        for project_id, description_text in rows:
+            vec = embedder.embed_documents([description_text])[0]
+            cur.execute(
+                "INSERT OR REPLACE INTO vec_projects(project_id, embedding) VALUES (?, json(?));",
+                (project_id, json.dumps(vec))
+            )
+        conn.commit()
 
-def compute_similarities(
+
+def _populate_projects_solutions(conn: sqlite3.Connection, k_proj: int = 5):
+    """
+    On the first run (or whenever projects_solutions is empty), match *every* solution
+    to its top-k_proj projects and insert into projects_solutions.
+    """
+    cur = conn.cursor()
+
+    # Check if projects_solutions is already populated
+    cur.execute("SELECT COUNT(*) FROM projects_solutions;")
+    count_ps = cur.fetchone()[0]
+    if count_ps == 0:
+        # Fetch all solution_ids
+        cur.execute("SELECT solution_id FROM solutions;")
+        all_solutions = [row[0] for row in cur.fetchall()]
+
+        for sid in all_solutions:
+            sql = f"""
+            WITH target AS (
+              SELECT embedding
+              FROM vec_solutions
+              WHERE solution_id = {sid}
+            )
+            INSERT OR IGNORE INTO projects_solutions(project_id, solution_id, similarity_score)
+            SELECT
+              vp.project_id       AS project_id,
+              {sid}               AS solution_id,
+              1.0 - distance      AS similarity_score
+            FROM vec_projects AS vp, target
+            WHERE vp.embedding
+                  MATCH target.embedding
+                AND k = {k_proj};
+            """
+            cur.executescript(sql)
+
+        conn.commit()
+
+
+def _embed_and_match_new_problems(
     conn: sqlite3.Connection,
+    embedder: OpenAIEmbeddings,
     problem_ids: List[int],
-    k: int = K
-) -> Tuple[List[int], List[int]]:
+    k: int = 5  # Top 5 solutions to match
+) -> List[int]:
     """
-    For the given list of problem_ids:
-      1) Find top-k nearest solutions per problem,
-      2) Aggregate matches, keep best similarity per solution,
-      3) Select top-k solutions overall,
-      4) For each selected solution, find top-k nearest projects,
-      5) Aggregate matches, keep best similarity per project,
-      6) Select top-k projects overall.
-
-    Inserts all problem-solution and project-solution pairs into their respective tables,
-    and returns (solution_ids_top_k, project_ids_top_k).
+    For each problem_id in problem_ids (all of which should have is_processed = 0),
+    1) Compute its embedding, insert into vec_problems.
+    2) Run a vec0 KNN query (k nearest solutions), insert into problems_solutions.
+    Returns a flat list of *all* solution_ids matched to these problems.
     """
     cur = conn.cursor()
-    # Clear previous matches
-    cur.execute("DELETE FROM problems_solutions;")
-    cur.execute("DELETE FROM projects_solutions;")
-    conn.commit()
+    matched_solution_ids = []
 
-    # 1) Problems → Solutions
-    problem_solution_matches: List[tuple[int, int, float]] = []
     for pid in problem_ids:
-        # Fetch the embedding for this problem_id
-        cur.execute(
-            "SELECT embedding FROM problems_embeddings WHERE problem_id = ?",
-            (pid,)
-        )
+        # Fetch the problem text
+        cur.execute("SELECT context FROM problems WHERE problem_id = ?", (pid,))
         row = cur.fetchone()
-        if not row or row[0] is None:
-            # No embedding for this problem, skip
+        if row is None:
             continue
-        problem_blob = row[0]
-        # Now query the nearest solutions using that blob
-        cur.execute("""
-            SELECT solution_id, distance AS similarity_score
-            FROM solutions_embeddings
-            WHERE embedding MATCH ?
-            AND k = ?
-        """, (problem_blob, k))
-        matches = cur.fetchall()  # list of (solution_id, similarity_score)
-        if not matches:
-            continue
-        # Insert into problems_solutions
-        cur.executemany(
-            "INSERT INTO problems_solutions(problem_id, solution_id, similarity_score) VALUES (?, ?, ?);",
-            ((pid, sid, dist) for sid, dist in matches)
-        )
-        for sid, dist in matches:
-            problem_solution_matches.append((pid, sid, dist))
+        problem_text = row[0]
 
-    conn.commit()
-
-    # 2) Aggregate best similarity per solution
-    best_score_per_solution: dict[int, float] = {}
-    for _, sid, dist in problem_solution_matches:
-        if sid not in best_score_per_solution or dist < best_score_per_solution[sid]:
-            best_score_per_solution[sid] = dist
-
-    # 3) Select top-k solutions by best (lowest) distance
-    sorted_solutions = sorted(best_score_per_solution.items(), key=lambda x: x[1])
-    top_solutions = [sid for sid, _ in sorted_solutions[:k]]
-
-    # 4) Solutions → Projects
-    project_solution_matches: List[tuple[int, int, float]] = []
-    for sid in top_solutions:
-        # Fetch the embedding for this solution_id
+        # Embed and insert into vec_problems
+        vec = embedder.embed_documents([problem_text])[0]
         cur.execute(
-            "SELECT embedding FROM solutions_embeddings WHERE solution_id = ?",
-            (sid,)
+            "INSERT OR REPLACE INTO vec_problems(problem_id, embedding) VALUES (?, json(?));",
+            (pid, json.dumps(vec))
         )
-        row = cur.fetchone()
-        if not row or row[0] is None:
-            continue
-        solution_blob = row[0]
-        # Now query nearest projects using that blob
-        cur.execute("""
-            SELECT project_id, distance AS similarity_score
-            FROM projects_embeddings
-            WHERE embedding MATCH ?
-            AND k = ?
-        """, (solution_blob, k))
-        proj_matches = cur.fetchall()  # list of (project_id, similarity_score)
-        if not proj_matches:
-            continue
-        # Insert into projects_solutions
-        cur.executemany(
-            "INSERT INTO projects_solutions(project_id, solution_id, similarity_score) VALUES (?, ?, ?);",
-            ((proj_id, sid, dist) for proj_id, dist in proj_matches)
+        conn.commit()
+
+        # KNN query: “problem” → top k “solutions”
+        sql = f"""
+        WITH target AS (
+          SELECT embedding
+          FROM vec_problems
+          WHERE problem_id = {pid}
         )
-        for proj_id, dist in proj_matches:
-            project_solution_matches.append((sid, proj_id, dist))
+        INSERT OR IGNORE INTO problems_solutions(problem_id, solution_id, similarity_score)
+        SELECT
+          {pid}               AS problem_id,
+          vs.solution_id      AS solution_id,
+          1.0 - distance      AS similarity_score
+        FROM vec_solutions AS vs, target
+        WHERE vs.embedding
+              MATCH target.embedding
+            AND k = {k};  -- Select top k solutions
+        """
+        cur.executescript(sql)
+        conn.commit()
 
-    conn.commit()
+        # Collect top k solution_ids
+        cur.execute(
+            "SELECT solution_id FROM problems_solutions WHERE problem_id = ? ORDER BY similarity_score DESC LIMIT ?",
+            (pid, k)
+        )
+        rows = cur.fetchall()
+        matched_solution_ids.extend(r[0] for r in rows)
 
-    # 5) Aggregate best similarity per project
-    best_score_per_project: dict[int, float] = {}
-    for _, proj_id, dist in project_solution_matches:
-        if proj_id not in best_score_per_project or dist < best_score_per_project[proj_id]:
-            best_score_per_project[proj_id] = dist
+        # Mark problem as processed
+        cur.execute("UPDATE problems SET is_processed = 1 WHERE problem_id = ?;", (pid,))
+        conn.commit()
 
-    # 6) Select top-k projects by best (lowest) distance
-    sorted_projects = sorted(best_score_per_project.items(), key=lambda x: x[1])
-    top_projects = [proj_id for proj_id, _ in sorted_projects[:k]]
+    # Deduplicate while preserving order
+    seen = set()
+    unique_solution_ids = []
+    for sid in matched_solution_ids:
+        if sid not in seen:
+            seen.add(sid)
+            unique_solution_ids.append(sid)
 
-    return top_solutions, top_projects
+    return unique_solution_ids
+
+
+def _collect_project_ids_for_solutions(
+    conn: sqlite3.Connection,
+    solution_ids: List[int],
+    top_n: int = 5  # Top 5 projects
+) -> List[int]:
+    if not solution_ids:
+        return []
+
+    cur = conn.cursor()
+    placeholders = ",".join("?" for _ in solution_ids)
+
+    # Fetch all matching rows, ordered by similarity_score DESC
+    query = f"""
+      SELECT project_id
+      FROM projects_solutions
+      WHERE solution_id IN ({placeholders})
+      ORDER BY similarity_score DESC
+      LIMIT {top_n};  -- Select top n projects
+    """
+    cur.execute(query, solution_ids)
+    rows = cur.fetchall()
+
+    seen = set()
+    unique_project_ids = []
+    for (pid,) in rows:
+        if pid not in seen:
+            seen.add(pid)
+            unique_project_ids.append(pid)
+
+    return unique_project_ids
+
 
 def match_embeddings(
-    db_file: str,
+    db_path: str,
     problem_ids: List[int],
-    k: int = K
+    k: int = 5  # Top 5 solutions and projects
 ) -> Tuple[List[int], List[int]]:
     """
-    Connect to the database, create & populate embedding tables,
-    run similarity search using only the given problem_ids, and return
-    (top_solution_ids, top_project_ids).
+    1) Connect to SQLite, load vec0.
+    2) Create vec_solutions / vec_projects / vec_problems (if missing).
+    3) On the first run, embed + insert *all* solutions and projects, then populate projects_solutions.
+    4) For each new problem_id, embed + KNN-match against solutions → populate problems_solutions.
+    5) Return (sol_ids, proj_ids):
+         • sol_ids = all solution_ids matched to the given problem_ids (deduped, in descending similarity order).
+         • proj_ids = all project_ids matched to those solution_ids (deduped, in descending similarity order).
     """
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    if not openai.api_key:
-        raise RuntimeError("OPENAI_API_KEY environment variable not set")
-
-    conn = sqlite3.connect(db_file)
+    conn = sqlite3.connect(db_path)
     conn.enable_load_extension(True)
-    sqlite_vec.load(conn)
+    _load_vec0_extension(conn)
     conn.enable_load_extension(False)
 
-    create_vec_tables(conn)
-    populate_embeddings(conn)
+    # Create the necessary tables if missing
+    _create_vec_tables_if_missing(conn)
 
-    if not problem_ids:
-        # No detected problems → no matches
-        return [], []
+    # Initialize the embedding model
+    embedder = OpenAIEmbeddings()
 
-    solution_ids, project_ids = compute_similarities(conn, problem_ids, k)
+    # First-run: populate all solution/project embeddings if needed
+    _populate_solutions_and_projects(conn, embedder)
+
+    # First-run: populate projects_solutions if needed
+    _populate_projects_solutions(conn, k_proj=3)
+
+    # For each newly detected problem, embed & match → solutions
+    sol_ids = _embed_and_match_new_problems(conn, embedder, problem_ids, k)
+
+    # Collect all matching project_ids for the selected solutions
+    proj_ids = _collect_project_ids_for_solutions(conn, sol_ids, top_n=k)
+
     conn.close()
-    return solution_ids, project_ids
+    return sol_ids, proj_ids
 
-if __name__ == "__main__":
-    DB_PATH = os.getenv("DB_PATH", "donation.db")
-    print(f"Running embedding and matching process for database: {DB_PATH}")
-    try:
-        sol_ids, proj_ids = match_embeddings(DB_PATH, [1, 2, 3], k=K)
-        print(f"Matched solutions: {sol_ids}")
-        print(f"Matched projects:  {proj_ids}")
-    except Exception as e:
-        print(f"Error: {e}")
