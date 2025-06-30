@@ -20,7 +20,7 @@ def process_message(message_id: int,
     _, project_ids = match_embeddings(db_file, problem_ids)
 
     # 3. Generate and return the final reply
-    return generate_output(db_file, message_id, problem_ids, project_ids)
+    return generate_output(db_file, message_id, problem_ids, project_ids=project_ids)
 
 if __name__ == "__main__":
     import sys

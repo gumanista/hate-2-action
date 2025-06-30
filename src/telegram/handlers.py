@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from src.pipeline import process_message
 from .config import Config
-from .database import Database
+from src.database import Database
 
 logger = logging.getLogger(__name__)
 

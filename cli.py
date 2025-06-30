@@ -13,7 +13,8 @@ sys.path.insert(0, SRC_DIR)
 
 from src.embed_and_match import match_embeddings
 from src.problem_detector import detect_problems
-from src.output_generator import generate_output  # Import the generate_output function
+from src.output_generator import generate_output
+from src.database import Database
 
 DB_PATH = os.getenv("DB_PATH", "donation.db")
 
@@ -39,13 +40,11 @@ def cmd_run_id(args):
     2) Call match_embeddings(...) to embed & match them
     3) Print out which problems were processed and the aggregated recommended project_ids
     """
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT problem_id FROM problems WHERE is_processed = 0;")
-    rows = cur.fetchall()
-    conn.close()
-
-    problem_ids = [r[0] for r in rows]
+    with Database(DB_PATH) as db:
+        cur = db.conn.cursor()
+        cur.execute("SELECT problem_id FROM problems WHERE is_processed = 0;")
+        rows = cur.fetchall()
+        problem_ids = [r[0] for r in rows]
     if not problem_ids:
         print("— No new problems to process.")
         return
@@ -69,59 +68,48 @@ def cmd_run(args):
     4) Link recommended project_ids into `message_projects(message_id, project_id)`.
     5) Print the recommended project_ids so that output_generator.py can be run separately.
     """
-    # Step 1: Insert into messages
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO messages (user_id, user_username, chat_title, text) VALUES (?, ?, ?, ?)",
-        (args.user_id, args.username, args.chat_title, args.text)
-    )
-    message_id = cur.lastrowid
-    conn.commit()
-    conn.close()
+    with Database(DB_PATH) as db:
+        # Step 1: Insert into messages
+        message_id = db.add_message(args.user_id, args.username, args.chat_title, args.text)
+        print(f"✉️  Stored new message as message_id={message_id}. Running problem detection…")
 
-    print(f"✉️  Stored new message as message_id={message_id}. Running problem detection…")
-    # Step 2: Detect problems for this message
-    problem_ids = detect_problems(DB_PATH, message_id)
+        # Step 2: Detect problems for this message
+        problem_ids = detect_problems(DB_PATH, message_id)
 
-    print("🔍 Matching new and existing unprocessed problems…")
-    # Fetch all unprocessed problems (including the ones we just inserted)
-    conn2 = sqlite3.connect(DB_PATH)
-    cur2 = conn2.cursor()
-    cur2.execute("SELECT problem_id FROM problems WHERE is_processed = 0;")
-    rows2 = cur2.fetchall()
-    conn2.close()
-    all_problem_ids = [r[0] for r in rows2]
+        print("🔍 Matching new and existing unprocessed problems…")
+        # Fetch all unprocessed problems (including the ones we just inserted)
+        cur = db.conn.cursor()
+        cur.execute("SELECT problem_id FROM problems WHERE is_processed = 0;")
+        rows = cur.fetchall()
+        all_problem_ids = [r[0] for r in rows]
 
-    if all_problem_ids:
-        sol_ids, proj_ids = match_embeddings(DB_PATH, all_problem_ids)
-    else:
-        sol_ids, proj_ids = [], []
+        if all_problem_ids:
+            sol_ids, proj_ids = match_embeddings(DB_PATH, all_problem_ids)
+        else:
+            sol_ids, proj_ids = [], []
 
-    # Step 4: Link this message_id → recommended projects
-    if proj_ids:
-        conn3 = sqlite3.connect(DB_PATH)
-        cur3 = conn3.cursor()
-        for proj_id in proj_ids:
-            cur3.execute(
-                "INSERT OR IGNORE INTO message_projects (message_id, project_id) VALUES (?, ?)",
-                (message_id, proj_id)
-            )
-        conn3.commit()
-        conn3.close()
-        print(f"🏷  Linked message {message_id} to projects: {proj_ids}")
-    else:
-        print("— No projects recommended for this message.")
+        # Step 4: Link this message_id → recommended projects
+        if proj_ids:
+            for proj_id in proj_ids:
+                cur.execute(
+                    "INSERT OR IGNORE INTO message_projects (message_id, project_id) VALUES (?, ?)",
+                    (message_id, proj_id)
+                )
+            db.conn.commit()
+            print(f"🏷  Linked message {message_id} to projects: {proj_ids}")
+        else:
+            print("— No projects recommended for this message.")
 
-    # Step 5: Generate and store the output using output_generator.py
-    print("📝 Generating output for this message…")
-    reply_text = generate_output(
-        db_file=DB_PATH,
-        message_id=message_id,
-        problem_ids=problem_ids,
-        project_ids=proj_ids
-    )
-    print(f"🗨️  Generated reply: {reply_text}")
+        # Step 5: Generate and store the output using output_generator.py
+        print("📝 Generating output for this message…")
+        reply_text = generate_output(
+            db_file=DB_PATH,
+            message_id=message_id,
+            problem_ids=problem_ids,
+            project_ids=proj_ids,
+            answer_style=args.answer_style
+        )
+        print(f"🗨️  Generated reply: {reply_text}")
 
 
 def main():
@@ -151,6 +139,11 @@ def main():
     p_run.add_argument("--user-id", type=int, default=0, help="User ID to store")
     p_run.add_argument("--username", default="", help="Username to store")
     p_run.add_argument("--chat-title", default="", help="Chat title to store")
+    p_run.add_argument(
+        "--answer-style",
+        default="empathetic",
+        help="Style of the answer to generate (e.g., 'empathetic', 'rude')."
+    )
     p_run.set_defaults(func=cmd_run)
 
     args = parser.parse_args()
