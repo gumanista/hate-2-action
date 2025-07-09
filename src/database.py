@@ -263,7 +263,7 @@ class Database:
 
         return [row[0] for row in rows]
 
-    def get_recommended_projects(self, problem_ids: List[int], top_n: int) -> List[Tuple[str, str, str, str]]:
+    def get_recommended_projects(self, problem_ids: List[int], top_n: int) -> List[Tuple[Any, ...]]:
         if not problem_ids:
             return []
         try:
@@ -274,54 +274,24 @@ class Database:
                     p.project_id,
                     p.name,
                     p.description,
-                    p.website,
-                    p.contact_email,
-                    MAX(psol.similarity_score * ps.similarity_score) as combined_similarity
+                    o.organization_id,
+                    o.name AS organization_name,
+                    o.website AS organization_website,
+                    o.contact_email AS organization_email,
+                    MAX(psol.similarity_score * ps.similarity_score) AS combined_similarity
                 FROM
-                    projects p
+                    projects AS p
                 JOIN
-                    projects_solutions ps ON p.project_id = ps.project_id
+                    organizations AS o ON p.organization_id = o.organization_id
                 JOIN
-                    problems_solutions psol ON ps.solution_id = psol.solution_id
+                    projects_solutions AS ps ON p.project_id = ps.project_id
+                JOIN
+                    problems_solutions AS psol ON ps.solution_id = psol.solution_id
                 WHERE
                     psol.problem_id IN ({problem_placeholders})
                 GROUP BY
-                    p.project_id
-                ORDER BY
-                    combined_similarity DESC
-                LIMIT ?;
-            """
-            params = tuple(problem_ids) + (top_n,)
-            cur.execute(query, params)
-            return cur.fetchall()
-        except sqlite3.Error as e:
-            logger.error("DB query failed: %s", e)
-            return []
-
-    def get_recommended_projects(self, problem_ids: List[int], top_n: int) -> List[Tuple[str, str, str, str]]:
-        if not problem_ids:
-            return []
-        try:
-            cur = self.conn.cursor()
-            problem_placeholders = ",".join("?" for _ in problem_ids)
-            query = f"""
-                SELECT
                     p.project_id,
-                    p.name,
-                    p.description,
-                    p.website,
-                    p.contact_email,
-                    MAX(psol.similarity_score * ps.similarity_score) as combined_similarity
-                FROM
-                    projects p
-                JOIN
-                    projects_solutions ps ON p.project_id = ps.project_id
-                JOIN
-                    problems_solutions psol ON ps.solution_id = psol.solution_id
-                WHERE
-                    psol.problem_id IN ({problem_placeholders})
-                GROUP BY
-                    p.project_id
+                    o.organization_id
                 ORDER BY
                     combined_similarity DESC
                 LIMIT ?;
@@ -346,17 +316,28 @@ class Database:
             logger.error("DB query failed: %s", e)
             return []
 
-    def get_projects_by_ids(self, project_ids: List[int], top_n: int) -> List[Tuple[str, str, str, str]]:
+    def get_projects_by_ids(self, project_ids: List[int], top_n: int) -> List[Tuple[Any, ...]]:
         if not project_ids:
             return []
         try:
             cur = self.conn.cursor()
             selected_ids = project_ids[:top_n]
             placeholders = ",".join("?" for _ in selected_ids)
-            query = (
-                f"SELECT name, description, website, contact_email "
-                f"FROM projects WHERE project_id IN ({placeholders})"
-            )
+            query = f"""
+                SELECT
+                    p.project_id,
+                    p.name,
+                    p.description,
+                    o.name AS organization_name,
+                    o.website AS organization_website,
+                    o.contact_email AS organization_email
+                FROM
+                    projects AS p
+                JOIN
+                    organizations AS o ON p.organization_id = o.organization_id
+                WHERE
+                    p.project_id IN ({placeholders})
+            """
             cur.execute(query, tuple(selected_ids))
             return cur.fetchall()
         except sqlite3.Error as e:

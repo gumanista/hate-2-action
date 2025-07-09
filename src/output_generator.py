@@ -85,14 +85,19 @@ def generate_output(
 
         if projects_data:
             prompt_lines.append("Recommended projects:")
-            for idx, (proj_name, proj_desc, proj_site, proj_email) in enumerate(projects_data, start=1):
+            for idx, (
+                proj_id, proj_name, proj_desc,
+                org_name, org_site, org_email
+            ) in enumerate(projects_data, start=1):
                 line = f"{idx}. {proj_name}"
                 if proj_desc:
                     line += f": {proj_desc}"
-                if proj_site:
-                    line += f" | Website: {proj_site}"
-                if proj_email:
-                    line += f" | Contact: {proj_email}"
+                if org_name:
+                    line += f"\n   Organization: {org_name}"
+                    if org_site:
+                        line += f" ({org_site})"
+                    if org_email:
+                        line += f" | Contact: {org_email}"
                 prompt_lines.append(line)
             prompt_lines.append("")
         else:
