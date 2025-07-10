@@ -73,7 +73,7 @@ jobs:
             export CI_PROJECT_NAME=$(echo ${{ github.repository }} | awk -F / '{print $2}')
             export CI_COMMIT_SHA=${{ github.sha }}
             export REGISTRY_IMAGE=ghcr.io/${{ github.repository }}
-            export DEPLOYMENT_BASE="/home/deploy/hate2action/${CI_PROJECT_NAME}"
+            export DEPLOYMENT_BASE="/home/deploy/${CI_PROJECT_NAME}"
             export ENVIRONMENT_SLUG="production"
             export DOMAIN_NAME=${{ secrets.DOMAIN_NAME }}
             export POSTGRES_USER=${{ secrets.POSTGRES_USER }}
