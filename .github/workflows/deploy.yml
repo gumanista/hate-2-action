@@ -78,6 +78,7 @@ jobs:
             export DEPLOYMENT_BASE="/home/deploy/${CI_PROJECT_NAME}"
             export ENVIRONMENT_SLUG="production"
             export DOMAIN_NAME=${{ secrets.DOMAIN_NAME }}
+            export API_HOST="api.${DOMAIN_NAME}"
             export POSTGRES_USER=${{ secrets.POSTGRES_USER }}
             export POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             export POSTGRES_DB=${{ secrets.POSTGRES_DB }}
@@ -122,7 +123,7 @@ jobs:
                 labels:
                   - "traefik.enable=true"
                   - "traefik.docker.network=traefik-public"
-                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.rule=Host(`api.${DOMAIN_NAME}`)"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.rule=Host(\`${API_HOST}\`)"
                   - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.entrypoints=https"
                   - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.tls=true"
                   - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.tls.certresolver=letsencrypt"
