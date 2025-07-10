@@ -1,0 +1,17 @@
+    body {
+  font-family: sans-serif;
+  margin: 2em;
+}
+
+h1 {
+  color: #333;
+}
+
+form {
+  margin-top: 1em;
+}
+
+textarea {
+  width: 100%;
+  max-width: 500px;
+}

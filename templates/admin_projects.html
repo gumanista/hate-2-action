@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin: Projects</title>
+</head>
+<body>
+  <h1>Manage Projects</h1>
+
+  <h2>Create New Project</h2>
+  <form method="post">
+    <input name="name" placeholder="Name" required><br>
+    <textarea name="description" placeholder="Description"></textarea><br>
+    <input name="website" placeholder="https://..."><br>
+    <input name="contact_email" placeholder="email"><br>
+    <label>Link Solutions:</label><br>
+    {% for sid, name in solutions %}
+      <input type="checkbox" name="solution_ids" value="{{ sid }}"> {{ name }}<br>
+    {% endfor %}
+    <button type="submit">Add Project</button>
+  </form>
+
+  <h2>Existing Projects</h2>
+  <ul>
+    {% for pid, nm, desc, web, email in projects %}
+      <li>
+        [{{ pid }}] <strong>{{ nm }}</strong><br>
+        {{ desc }}<br>
+        <a href="{{ web }}">{{ web }}</a> |
+        <a href="mailto:{{ email }}">{{ email }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>D: Chatbot — Find Projects</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>🔍 Tell me your issue</h1>
+  <form method="post" action="/recommend/">
+    <textarea name="text" rows="4" cols="50" placeholder="Paste your message…"></textarea><br>
+    <button type="submit">Analyze & Recommend</button>
+  </form>
+
+  {% if projects %}
+    <h2>Recommended Projects</h2>
+    <ul>
+      {% for p in projects %}
+        <li>
+          <strong>{{ p.name }}</strong><br>
+          {{ p.description }}<br>
+          <a href="{{ p.website }}">{{ p.website }}</a> |
+          <a href="mailto:{{ p.contact_email }}">{{ p.contact_email }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</body>
+</html>
