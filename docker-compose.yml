@@ -1,0 +1,42 @@
+services:
+  db:
+    image: pgvector/pgvector:pg15
+    env_file:
+      - .env
+    volumes:
+      - ./.data/postgres:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db-seed:
+    build: .
+    command: python scripts/seed_db.py
+    env_file:
+      - .env
+    volumes:
+      - ./scripts:/app/scripts
+      - ./initial_data:/app/initial_data
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db-seed
+
+  bot:
+    build: .
+    command: python -m server.telegram.bot
+    env_file:
+      - .env
+    depends_on:
+      - api

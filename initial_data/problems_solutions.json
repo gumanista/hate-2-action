@@ -1,0 +1,1892 @@
+[
+    {
+        "problem_id": 1,
+        "solution_id": 29,
+        "similarity_score": 0.4414008855819702,
+        "matched_at": "2025-06-06 16:53:34"
+    },
+    {
+        "problem_id": 1,
+        "solution_id": 1,
+        "similarity_score": 0.42600876092910767,
+        "matched_at": "2025-06-06 16:53:34"
+    },
+    {
+        "problem_id": 1,
+        "solution_id": 15,
+        "similarity_score": 0.42206937074661255,
+        "matched_at": "2025-06-06 16:53:34"
+    },
+    {
+        "problem_id": 1,
+        "solution_id": 2,
+        "similarity_score": 0.41817378997802734,
+        "matched_at": "2025-06-06 16:53:34"
+    },
+    {
+        "problem_id": 1,
+        "solution_id": 20,
+        "similarity_score": 0.4154955744743347,
+        "matched_at": "2025-06-06 16:53:34"
+    },
+    {
+        "problem_id": 2,
+        "solution_id": 29,
+        "similarity_score": 0.44874846935272217,
+        "matched_at": "2025-06-06 16:53:35"
+    },
+    {
+        "problem_id": 2,
+        "solution_id": 20,
+        "similarity_score": 0.4452282190322876,
+        "matched_at": "2025-06-06 16:53:35"
+    },
+    {
+        "problem_id": 2,
+        "solution_id": 1,
+        "similarity_score": 0.4242190718650818,
+        "matched_at": "2025-06-06 16:53:35"
+    },
+    {
+        "problem_id": 2,
+        "solution_id": 26,
+        "similarity_score": 0.4050073027610779,
+        "matched_at": "2025-06-06 16:53:35"
+    },
+    {
+        "problem_id": 2,
+        "solution_id": 43,
+        "similarity_score": 0.4045700430870056,
+        "matched_at": "2025-06-06 16:53:35"
+    },
+    {
+        "problem_id": 3,
+        "solution_id": 29,
+        "similarity_score": 0.4585437774658203,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 3,
+        "solution_id": 39,
+        "similarity_score": 0.4484604597091675,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 3,
+        "solution_id": 17,
+        "similarity_score": 0.43829089403152466,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 3,
+        "solution_id": 33,
+        "similarity_score": 0.4218485355377197,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 3,
+        "solution_id": 24,
+        "similarity_score": 0.42166203260421753,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 4,
+        "solution_id": 7,
+        "similarity_score": 0.47114622592926025,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 4,
+        "solution_id": 25,
+        "similarity_score": 0.45272332429885864,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 4,
+        "solution_id": 21,
+        "similarity_score": 0.4476271867752075,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 4,
+        "solution_id": 3,
+        "similarity_score": 0.4400341510772705,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 4,
+        "solution_id": 29,
+        "similarity_score": 0.4388883709907532,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 5,
+        "solution_id": 7,
+        "similarity_score": 0.478101909160614,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 5,
+        "solution_id": 16,
+        "similarity_score": 0.4455340504646301,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 5,
+        "solution_id": 5,
+        "similarity_score": 0.4434150457382202,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 5,
+        "solution_id": 21,
+        "similarity_score": 0.4317564368247986,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 5,
+        "solution_id": 4,
+        "similarity_score": 0.4280550479888916,
+        "matched_at": "2025-06-06 16:53:36"
+    },
+    {
+        "problem_id": 6,
+        "solution_id": 20,
+        "similarity_score": 0.45660972595214844,
+        "matched_at": "2025-06-06 16:53:37"
+    },
+    {
+        "problem_id": 6,
+        "solution_id": 29,
+        "similarity_score": 0.453419029712677,
+        "matched_at": "2025-06-06 16:53:37"
+    },
+    {
+        "problem_id": 6,
+        "solution_id": 34,
+        "similarity_score": 0.4496297836303711,
+        "matched_at": "2025-06-06 16:53:37"
+    },
+    {
+        "problem_id": 6,
+        "solution_id": 7,
+        "similarity_score": 0.4381600618362427,
+        "matched_at": "2025-06-06 16:53:37"
+    },
+    {
+        "problem_id": 6,
+        "solution_id": 19,
+        "similarity_score": 0.4349573254585266,
+        "matched_at": "2025-06-06 16:53:37"
+    },
+    {
+        "problem_id": 7,
+        "solution_id": 7,
+        "similarity_score": 0.4673991799354553,
+        "matched_at": "2025-06-06 16:53:38"
+    },
+    {
+        "problem_id": 7,
+        "solution_id": 42,
+        "similarity_score": 0.44369739294052124,
+        "matched_at": "2025-06-06 16:53:38"
+    },
+    {
+        "problem_id": 7,
+        "solution_id": 8,
+        "similarity_score": 0.4417399764060974,
+        "matched_at": "2025-06-06 16:53:38"
+    },
+    {
+        "problem_id": 7,
+        "solution_id": 21,
+        "similarity_score": 0.42706775665283203,
+        "matched_at": "2025-06-06 16:53:38"
+    },
+    {
+        "problem_id": 7,
+        "solution_id": 29,
+        "similarity_score": 0.41234779357910156,
+        "matched_at": "2025-06-06 16:53:38"
+    },
+    {
+        "problem_id": 8,
+        "solution_id": 8,
+        "similarity_score": 0.5401099324226379,
+        "matched_at": "2025-06-06 16:53:38"
+    },
+    {
+        "problem_id": 8,
+        "solution_id": 9,
+        "similarity_score": 0.46400541067123413,
+        "matched_at": "2025-06-06 16:53:38"
+    },
+    {
+        "problem_id": 8,
+        "solution_id": 11,
+        "similarity_score": 0.4610234498977661,
+        "matched_at": "2025-06-06 16:53:38"
+    },
+    {
+        "problem_id": 8,
+        "solution_id": 46,
+        "similarity_score": 0.45736682415008545,
+        "matched_at": "2025-06-06 16:53:38"
+    },
+    {
+        "problem_id": 8,
+        "solution_id": 42,
+        "similarity_score": 0.4541499614715576,
+        "matched_at": "2025-06-06 16:53:38"
+    },
+    {
+        "problem_id": 9,
+        "solution_id": 9,
+        "similarity_score": 0.49498653411865234,
+        "matched_at": "2025-06-06 16:53:39"
+    },
+    {
+        "problem_id": 9,
+        "solution_id": 13,
+        "similarity_score": 0.4563341736793518,
+        "matched_at": "2025-06-06 16:53:39"
+    },
+    {
+        "problem_id": 9,
+        "solution_id": 34,
+        "similarity_score": 0.45462971925735474,
+        "matched_at": "2025-06-06 16:53:39"
+    },
+    {
+        "problem_id": 9,
+        "solution_id": 20,
+        "similarity_score": 0.4500125050544739,
+        "matched_at": "2025-06-06 16:53:39"
+    },
+    {
+        "problem_id": 9,
+        "solution_id": 8,
+        "similarity_score": 0.4493219256401062,
+        "matched_at": "2025-06-06 16:53:39"
+    },
+    {
+        "problem_id": 10,
+        "solution_id": 29,
+        "similarity_score": 0.4495398998260498,
+        "matched_at": "2025-06-06 16:53:40"
+    },
+    {
+        "problem_id": 10,
+        "solution_id": 10,
+        "similarity_score": 0.4448370933532715,
+        "matched_at": "2025-06-06 16:53:40"
+    },
+    {
+        "problem_id": 10,
+        "solution_id": 13,
+        "similarity_score": 0.43893444538116455,
+        "matched_at": "2025-06-06 16:53:40"
+    },
+    {
+        "problem_id": 10,
+        "solution_id": 12,
+        "similarity_score": 0.4328429102897644,
+        "matched_at": "2025-06-06 16:53:40"
+    },
+    {
+        "problem_id": 10,
+        "solution_id": 20,
+        "similarity_score": 0.4276939630508423,
+        "matched_at": "2025-06-06 16:53:40"
+    },
+    {
+        "problem_id": 11,
+        "solution_id": 29,
+        "similarity_score": 0.4667109251022339,
+        "matched_at": "2025-06-06 16:53:41"
+    },
+    {
+        "problem_id": 11,
+        "solution_id": 43,
+        "similarity_score": 0.4358040690422058,
+        "matched_at": "2025-06-06 16:53:41"
+    },
+    {
+        "problem_id": 11,
+        "solution_id": 24,
+        "similarity_score": 0.4254431128501892,
+        "matched_at": "2025-06-06 16:53:41"
+    },
+    {
+        "problem_id": 11,
+        "solution_id": 17,
+        "similarity_score": 0.42030370235443115,
+        "matched_at": "2025-06-06 16:53:41"
+    },
+    {
+        "problem_id": 11,
+        "solution_id": 39,
+        "similarity_score": 0.4132486581802368,
+        "matched_at": "2025-06-06 16:53:41"
+    },
+    {
+        "problem_id": 12,
+        "solution_id": 12,
+        "similarity_score": 0.4869590997695923,
+        "matched_at": "2025-06-06 16:53:42"
+    },
+    {
+        "problem_id": 12,
+        "solution_id": 2,
+        "similarity_score": 0.4432053565979004,
+        "matched_at": "2025-06-06 16:53:42"
+    },
+    {
+        "problem_id": 12,
+        "solution_id": 26,
+        "similarity_score": 0.434234619140625,
+        "matched_at": "2025-06-06 16:53:42"
+    },
+    {
+        "problem_id": 12,
+        "solution_id": 29,
+        "similarity_score": 0.4337524175643921,
+        "matched_at": "2025-06-06 16:53:42"
+    },
+    {
+        "problem_id": 12,
+        "solution_id": 46,
+        "similarity_score": 0.4326266646385193,
+        "matched_at": "2025-06-06 16:53:42"
+    },
+    {
+        "problem_id": 13,
+        "solution_id": 12,
+        "similarity_score": 0.4761006236076355,
+        "matched_at": "2025-06-06 16:53:42"
+    },
+    {
+        "problem_id": 13,
+        "solution_id": 39,
+        "similarity_score": 0.45422691106796265,
+        "matched_at": "2025-06-06 16:53:42"
+    },
+    {
+        "problem_id": 13,
+        "solution_id": 13,
+        "similarity_score": 0.4509219527244568,
+        "matched_at": "2025-06-06 16:53:42"
+    },
+    {
+        "problem_id": 13,
+        "solution_id": 29,
+        "similarity_score": 0.4470440149307251,
+        "matched_at": "2025-06-06 16:53:42"
+    },
+    {
+        "problem_id": 13,
+        "solution_id": 26,
+        "similarity_score": 0.4455322027206421,
+        "matched_at": "2025-06-06 16:53:42"
+    },
+    {
+        "problem_id": 14,
+        "solution_id": 13,
+        "similarity_score": 0.4608559012413025,
+        "matched_at": "2025-06-06 16:53:44"
+    },
+    {
+        "problem_id": 14,
+        "solution_id": 19,
+        "similarity_score": 0.4303854703903198,
+        "matched_at": "2025-06-06 16:53:44"
+    },
+    {
+        "problem_id": 14,
+        "solution_id": 46,
+        "similarity_score": 0.4292503595352173,
+        "matched_at": "2025-06-06 16:53:44"
+    },
+    {
+        "problem_id": 14,
+        "solution_id": 29,
+        "similarity_score": 0.4288672208786011,
+        "matched_at": "2025-06-06 16:53:44"
+    },
+    {
+        "problem_id": 14,
+        "solution_id": 45,
+        "similarity_score": 0.42351722717285156,
+        "matched_at": "2025-06-06 16:53:44"
+    },
+    {
+        "problem_id": 15,
+        "solution_id": 29,
+        "similarity_score": 0.4549514055252075,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 15,
+        "solution_id": 20,
+        "similarity_score": 0.45348864793777466,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 15,
+        "solution_id": 13,
+        "similarity_score": 0.42428910732269287,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 15,
+        "solution_id": 17,
+        "similarity_score": 0.41862261295318604,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 15,
+        "solution_id": 45,
+        "similarity_score": 0.4176409840583801,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 16,
+        "solution_id": 16,
+        "similarity_score": 0.43567955493927,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 16,
+        "solution_id": 37,
+        "similarity_score": 0.4262658953666687,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 16,
+        "solution_id": 27,
+        "similarity_score": 0.42376595735549927,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 16,
+        "solution_id": 25,
+        "similarity_score": 0.4215635657310486,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 16,
+        "solution_id": 20,
+        "similarity_score": 0.4200652837753296,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 17,
+        "solution_id": 20,
+        "similarity_score": 0.4848552346229553,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 17,
+        "solution_id": 27,
+        "similarity_score": 0.4646715521812439,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 17,
+        "solution_id": 29,
+        "similarity_score": 0.4459177851676941,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 17,
+        "solution_id": 33,
+        "similarity_score": 0.44202834367752075,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 17,
+        "solution_id": 7,
+        "similarity_score": 0.4322100877761841,
+        "matched_at": "2025-06-06 16:53:45"
+    },
+    {
+        "problem_id": 18,
+        "solution_id": 43,
+        "similarity_score": 0.44583791494369507,
+        "matched_at": "2025-06-06 16:53:46"
+    },
+    {
+        "problem_id": 18,
+        "solution_id": 20,
+        "similarity_score": 0.43755555152893066,
+        "matched_at": "2025-06-06 16:53:46"
+    },
+    {
+        "problem_id": 18,
+        "solution_id": 17,
+        "similarity_score": 0.427628755569458,
+        "matched_at": "2025-06-06 16:53:46"
+    },
+    {
+        "problem_id": 18,
+        "solution_id": 36,
+        "similarity_score": 0.42665916681289673,
+        "matched_at": "2025-06-06 16:53:46"
+    },
+    {
+        "problem_id": 18,
+        "solution_id": 12,
+        "similarity_score": 0.4245883822441101,
+        "matched_at": "2025-06-06 16:53:46"
+    },
+    {
+        "problem_id": 19,
+        "solution_id": 20,
+        "similarity_score": 0.42765307426452637,
+        "matched_at": "2025-06-06 16:53:47"
+    },
+    {
+        "problem_id": 19,
+        "solution_id": 15,
+        "similarity_score": 0.4261058568954468,
+        "matched_at": "2025-06-06 16:53:47"
+    },
+    {
+        "problem_id": 19,
+        "solution_id": 17,
+        "similarity_score": 0.42364501953125,
+        "matched_at": "2025-06-06 16:53:47"
+    },
+    {
+        "problem_id": 19,
+        "solution_id": 25,
+        "similarity_score": 0.418739914894104,
+        "matched_at": "2025-06-06 16:53:47"
+    },
+    {
+        "problem_id": 19,
+        "solution_id": 43,
+        "similarity_score": 0.41523581743240356,
+        "matched_at": "2025-06-06 16:53:47"
+    },
+    {
+        "problem_id": 20,
+        "solution_id": 20,
+        "similarity_score": 0.4677378535270691,
+        "matched_at": "2025-06-06 16:53:47"
+    },
+    {
+        "problem_id": 20,
+        "solution_id": 19,
+        "similarity_score": 0.4594559669494629,
+        "matched_at": "2025-06-06 16:53:47"
+    },
+    {
+        "problem_id": 20,
+        "solution_id": 5,
+        "similarity_score": 0.4190530776977539,
+        "matched_at": "2025-06-06 16:53:47"
+    },
+    {
+        "problem_id": 20,
+        "solution_id": 3,
+        "similarity_score": 0.40814584493637085,
+        "matched_at": "2025-06-06 16:53:47"
+    },
+    {
+        "problem_id": 20,
+        "solution_id": 35,
+        "similarity_score": 0.4067668318748474,
+        "matched_at": "2025-06-06 16:53:47"
+    },
+    {
+        "problem_id": 21,
+        "solution_id": 22,
+        "similarity_score": 0.4320102334022522,
+        "matched_at": "2025-06-06 16:53:48"
+    },
+    {
+        "problem_id": 21,
+        "solution_id": 21,
+        "similarity_score": 0.43006449937820435,
+        "matched_at": "2025-06-06 16:53:48"
+    },
+    {
+        "problem_id": 21,
+        "solution_id": 7,
+        "similarity_score": 0.4230889678001404,
+        "matched_at": "2025-06-06 16:53:48"
+    },
+    {
+        "problem_id": 21,
+        "solution_id": 51,
+        "similarity_score": 0.4134727716445923,
+        "matched_at": "2025-06-06 16:53:48"
+    },
+    {
+        "problem_id": 21,
+        "solution_id": 29,
+        "similarity_score": 0.41165828704833984,
+        "matched_at": "2025-06-06 16:53:48"
+    },
+    {
+        "problem_id": 22,
+        "solution_id": 21,
+        "similarity_score": 0.4698179364204407,
+        "matched_at": "2025-06-06 16:53:48"
+    },
+    {
+        "problem_id": 22,
+        "solution_id": 7,
+        "similarity_score": 0.46702754497528076,
+        "matched_at": "2025-06-06 16:53:48"
+    },
+    {
+        "problem_id": 22,
+        "solution_id": 36,
+        "similarity_score": 0.45335525274276733,
+        "matched_at": "2025-06-06 16:53:48"
+    },
+    {
+        "problem_id": 22,
+        "solution_id": 29,
+        "similarity_score": 0.4495489001274109,
+        "matched_at": "2025-06-06 16:53:48"
+    },
+    {
+        "problem_id": 22,
+        "solution_id": 3,
+        "similarity_score": 0.44521796703338623,
+        "matched_at": "2025-06-06 16:53:48"
+    },
+    {
+        "problem_id": 23,
+        "solution_id": 37,
+        "similarity_score": 0.43078821897506714,
+        "matched_at": "2025-06-06 16:53:49"
+    },
+    {
+        "problem_id": 23,
+        "solution_id": 29,
+        "similarity_score": 0.423112690448761,
+        "matched_at": "2025-06-06 16:53:49"
+    },
+    {
+        "problem_id": 23,
+        "solution_id": 20,
+        "similarity_score": 0.41637158393859863,
+        "matched_at": "2025-06-06 16:53:49"
+    },
+    {
+        "problem_id": 23,
+        "solution_id": 1,
+        "similarity_score": 0.4152255058288574,
+        "matched_at": "2025-06-06 16:53:49"
+    },
+    {
+        "problem_id": 23,
+        "solution_id": 23,
+        "similarity_score": 0.4115447998046875,
+        "matched_at": "2025-06-06 16:53:49"
+    },
+    {
+        "problem_id": 24,
+        "solution_id": 51,
+        "similarity_score": 0.4352232813835144,
+        "matched_at": "2025-06-06 16:53:51"
+    },
+    {
+        "problem_id": 24,
+        "solution_id": 29,
+        "similarity_score": 0.4340619444847107,
+        "matched_at": "2025-06-06 16:53:51"
+    },
+    {
+        "problem_id": 24,
+        "solution_id": 26,
+        "similarity_score": 0.4313201308250427,
+        "matched_at": "2025-06-06 16:53:51"
+    },
+    {
+        "problem_id": 24,
+        "solution_id": 38,
+        "similarity_score": 0.4148438572883606,
+        "matched_at": "2025-06-06 16:53:51"
+    },
+    {
+        "problem_id": 24,
+        "solution_id": 20,
+        "similarity_score": 0.4122076630592346,
+        "matched_at": "2025-06-06 16:53:51"
+    },
+    {
+        "problem_id": 25,
+        "solution_id": 20,
+        "similarity_score": 0.44536417722702026,
+        "matched_at": "2025-06-06 16:53:51"
+    },
+    {
+        "problem_id": 25,
+        "solution_id": 37,
+        "similarity_score": 0.4357759356498718,
+        "matched_at": "2025-06-06 16:53:51"
+    },
+    {
+        "problem_id": 25,
+        "solution_id": 27,
+        "similarity_score": 0.4207174777984619,
+        "matched_at": "2025-06-06 16:53:51"
+    },
+    {
+        "problem_id": 25,
+        "solution_id": 38,
+        "similarity_score": 0.4068918228149414,
+        "matched_at": "2025-06-06 16:53:51"
+    },
+    {
+        "problem_id": 25,
+        "solution_id": 25,
+        "similarity_score": 0.40228402614593506,
+        "matched_at": "2025-06-06 16:53:51"
+    },
+    {
+        "problem_id": 26,
+        "solution_id": 12,
+        "similarity_score": 0.4291144013404846,
+        "matched_at": "2025-06-06 16:53:52"
+    },
+    {
+        "problem_id": 26,
+        "solution_id": 20,
+        "similarity_score": 0.42768317461013794,
+        "matched_at": "2025-06-06 16:53:52"
+    },
+    {
+        "problem_id": 26,
+        "solution_id": 2,
+        "similarity_score": 0.40888190269470215,
+        "matched_at": "2025-06-06 16:53:52"
+    },
+    {
+        "problem_id": 26,
+        "solution_id": 27,
+        "similarity_score": 0.4034079313278198,
+        "matched_at": "2025-06-06 16:53:52"
+    },
+    {
+        "problem_id": 26,
+        "solution_id": 29,
+        "similarity_score": 0.40265095233917236,
+        "matched_at": "2025-06-06 16:53:52"
+    },
+    {
+        "problem_id": 27,
+        "solution_id": 17,
+        "similarity_score": 0.43893659114837646,
+        "matched_at": "2025-06-06 16:53:52"
+    },
+    {
+        "problem_id": 27,
+        "solution_id": 20,
+        "similarity_score": 0.42992573976516724,
+        "matched_at": "2025-06-06 16:53:52"
+    },
+    {
+        "problem_id": 27,
+        "solution_id": 27,
+        "similarity_score": 0.4209108352661133,
+        "matched_at": "2025-06-06 16:53:52"
+    },
+    {
+        "problem_id": 27,
+        "solution_id": 24,
+        "similarity_score": 0.4193004369735718,
+        "matched_at": "2025-06-06 16:53:52"
+    },
+    {
+        "problem_id": 27,
+        "solution_id": 29,
+        "similarity_score": 0.41220784187316895,
+        "matched_at": "2025-06-06 16:53:52"
+    },
+    {
+        "problem_id": 28,
+        "solution_id": 25,
+        "similarity_score": 0.4562948942184448,
+        "matched_at": "2025-06-06 16:53:53"
+    },
+    {
+        "problem_id": 28,
+        "solution_id": 29,
+        "similarity_score": 0.439697802066803,
+        "matched_at": "2025-06-06 16:53:53"
+    },
+    {
+        "problem_id": 28,
+        "solution_id": 17,
+        "similarity_score": 0.439447820186615,
+        "matched_at": "2025-06-06 16:53:53"
+    },
+    {
+        "problem_id": 28,
+        "solution_id": 28,
+        "similarity_score": 0.4355629086494446,
+        "matched_at": "2025-06-06 16:53:53"
+    },
+    {
+        "problem_id": 28,
+        "solution_id": 1,
+        "similarity_score": 0.43527257442474365,
+        "matched_at": "2025-06-06 16:53:53"
+    },
+    {
+        "problem_id": 29,
+        "solution_id": 12,
+        "similarity_score": 0.4268340468406677,
+        "matched_at": "2025-06-06 16:53:53"
+    },
+    {
+        "problem_id": 29,
+        "solution_id": 43,
+        "similarity_score": 0.41598427295684814,
+        "matched_at": "2025-06-06 16:53:53"
+    },
+    {
+        "problem_id": 29,
+        "solution_id": 21,
+        "similarity_score": 0.4142257571220398,
+        "matched_at": "2025-06-06 16:53:53"
+    },
+    {
+        "problem_id": 29,
+        "solution_id": 20,
+        "similarity_score": 0.413840115070343,
+        "matched_at": "2025-06-06 16:53:53"
+    },
+    {
+        "problem_id": 29,
+        "solution_id": 11,
+        "similarity_score": 0.4126186966896057,
+        "matched_at": "2025-06-06 16:53:53"
+    },
+    {
+        "problem_id": 30,
+        "solution_id": 39,
+        "similarity_score": 0.4284284710884094,
+        "matched_at": "2025-06-06 16:53:54"
+    },
+    {
+        "problem_id": 30,
+        "solution_id": 15,
+        "similarity_score": 0.42574256658554077,
+        "matched_at": "2025-06-06 16:53:54"
+    },
+    {
+        "problem_id": 30,
+        "solution_id": 27,
+        "similarity_score": 0.4256686568260193,
+        "matched_at": "2025-06-06 16:53:54"
+    },
+    {
+        "problem_id": 30,
+        "solution_id": 20,
+        "similarity_score": 0.4175128936767578,
+        "matched_at": "2025-06-06 16:53:54"
+    },
+    {
+        "problem_id": 30,
+        "solution_id": 17,
+        "similarity_score": 0.41583138704299927,
+        "matched_at": "2025-06-06 16:53:54"
+    },
+    {
+        "problem_id": 31,
+        "solution_id": 37,
+        "similarity_score": 0.4427106976509094,
+        "matched_at": "2025-06-06 16:53:54"
+    },
+    {
+        "problem_id": 31,
+        "solution_id": 1,
+        "similarity_score": 0.4353192448616028,
+        "matched_at": "2025-06-06 16:53:54"
+    },
+    {
+        "problem_id": 31,
+        "solution_id": 20,
+        "similarity_score": 0.4228633642196655,
+        "matched_at": "2025-06-06 16:53:54"
+    },
+    {
+        "problem_id": 31,
+        "solution_id": 17,
+        "similarity_score": 0.41795259714126587,
+        "matched_at": "2025-06-06 16:53:54"
+    },
+    {
+        "problem_id": 31,
+        "solution_id": 23,
+        "similarity_score": 0.4140656590461731,
+        "matched_at": "2025-06-06 16:53:54"
+    },
+    {
+        "problem_id": 32,
+        "solution_id": 29,
+        "similarity_score": 0.4395890235900879,
+        "matched_at": "2025-06-06 16:53:55"
+    },
+    {
+        "problem_id": 32,
+        "solution_id": 2,
+        "similarity_score": 0.4165487289428711,
+        "matched_at": "2025-06-06 16:53:55"
+    },
+    {
+        "problem_id": 32,
+        "solution_id": 39,
+        "similarity_score": 0.41617584228515625,
+        "matched_at": "2025-06-06 16:53:55"
+    },
+    {
+        "problem_id": 32,
+        "solution_id": 38,
+        "similarity_score": 0.4131457209587097,
+        "matched_at": "2025-06-06 16:53:55"
+    },
+    {
+        "problem_id": 32,
+        "solution_id": 32,
+        "similarity_score": 0.41172724962234497,
+        "matched_at": "2025-06-06 16:53:55"
+    },
+    {
+        "problem_id": 33,
+        "solution_id": 29,
+        "similarity_score": 0.46076279878616333,
+        "matched_at": "2025-06-06 16:53:56"
+    },
+    {
+        "problem_id": 33,
+        "solution_id": 20,
+        "similarity_score": 0.4361454248428345,
+        "matched_at": "2025-06-06 16:53:56"
+    },
+    {
+        "problem_id": 33,
+        "solution_id": 17,
+        "similarity_score": 0.426050066947937,
+        "matched_at": "2025-06-06 16:53:56"
+    },
+    {
+        "problem_id": 33,
+        "solution_id": 18,
+        "similarity_score": 0.4235098958015442,
+        "matched_at": "2025-06-06 16:53:56"
+    },
+    {
+        "problem_id": 33,
+        "solution_id": 3,
+        "similarity_score": 0.42224550247192383,
+        "matched_at": "2025-06-06 16:53:56"
+    },
+    {
+        "problem_id": 34,
+        "solution_id": 21,
+        "similarity_score": 0.42936521768569946,
+        "matched_at": "2025-06-06 16:53:57"
+    },
+    {
+        "problem_id": 34,
+        "solution_id": 42,
+        "similarity_score": 0.4235227108001709,
+        "matched_at": "2025-06-06 16:53:57"
+    },
+    {
+        "problem_id": 34,
+        "solution_id": 17,
+        "similarity_score": 0.41890382766723633,
+        "matched_at": "2025-06-06 16:53:57"
+    },
+    {
+        "problem_id": 34,
+        "solution_id": 20,
+        "similarity_score": 0.41441768407821655,
+        "matched_at": "2025-06-06 16:53:57"
+    },
+    {
+        "problem_id": 34,
+        "solution_id": 36,
+        "similarity_score": 0.4116755723953247,
+        "matched_at": "2025-06-06 16:53:57"
+    },
+    {
+        "problem_id": 35,
+        "solution_id": 38,
+        "similarity_score": 0.4422166347503662,
+        "matched_at": "2025-06-06 16:53:58"
+    },
+    {
+        "problem_id": 35,
+        "solution_id": 35,
+        "similarity_score": 0.4221036434173584,
+        "matched_at": "2025-06-06 16:53:58"
+    },
+    {
+        "problem_id": 35,
+        "solution_id": 37,
+        "similarity_score": 0.42157912254333496,
+        "matched_at": "2025-06-06 16:53:58"
+    },
+    {
+        "problem_id": 35,
+        "solution_id": 29,
+        "similarity_score": 0.4158514142036438,
+        "matched_at": "2025-06-06 16:53:58"
+    },
+    {
+        "problem_id": 35,
+        "solution_id": 23,
+        "similarity_score": 0.41262614727020264,
+        "matched_at": "2025-06-06 16:53:58"
+    },
+    {
+        "problem_id": 36,
+        "solution_id": 43,
+        "similarity_score": 0.49846553802490234,
+        "matched_at": "2025-06-06 16:53:58"
+    },
+    {
+        "problem_id": 36,
+        "solution_id": 41,
+        "similarity_score": 0.47067469358444214,
+        "matched_at": "2025-06-06 16:53:58"
+    },
+    {
+        "problem_id": 36,
+        "solution_id": 17,
+        "similarity_score": 0.4681759476661682,
+        "matched_at": "2025-06-06 16:53:58"
+    },
+    {
+        "problem_id": 36,
+        "solution_id": 20,
+        "similarity_score": 0.45886218547821045,
+        "matched_at": "2025-06-06 16:53:58"
+    },
+    {
+        "problem_id": 36,
+        "solution_id": 36,
+        "similarity_score": 0.44705700874328613,
+        "matched_at": "2025-06-06 16:53:58"
+    },
+    {
+        "problem_id": 37,
+        "solution_id": 7,
+        "similarity_score": 0.41286492347717285,
+        "matched_at": "2025-06-06 16:53:59"
+    },
+    {
+        "problem_id": 37,
+        "solution_id": 42,
+        "similarity_score": 0.4037381410598755,
+        "matched_at": "2025-06-06 16:53:59"
+    },
+    {
+        "problem_id": 37,
+        "solution_id": 20,
+        "similarity_score": 0.4031192660331726,
+        "matched_at": "2025-06-06 16:53:59"
+    },
+    {
+        "problem_id": 37,
+        "solution_id": 19,
+        "similarity_score": 0.39501553773880005,
+        "matched_at": "2025-06-06 16:53:59"
+    },
+    {
+        "problem_id": 37,
+        "solution_id": 36,
+        "similarity_score": 0.38911521434783936,
+        "matched_at": "2025-06-06 16:53:59"
+    },
+    {
+        "problem_id": 38,
+        "solution_id": 27,
+        "similarity_score": 0.4770481586456299,
+        "matched_at": "2025-06-06 16:53:59"
+    },
+    {
+        "problem_id": 38,
+        "solution_id": 19,
+        "similarity_score": 0.4413856267929077,
+        "matched_at": "2025-06-06 16:53:59"
+    },
+    {
+        "problem_id": 38,
+        "solution_id": 37,
+        "similarity_score": 0.43733906745910645,
+        "matched_at": "2025-06-06 16:53:59"
+    },
+    {
+        "problem_id": 38,
+        "solution_id": 6,
+        "similarity_score": 0.43708163499832153,
+        "matched_at": "2025-06-06 16:53:59"
+    },
+    {
+        "problem_id": 38,
+        "solution_id": 20,
+        "similarity_score": 0.4360753297805786,
+        "matched_at": "2025-06-06 16:53:59"
+    },
+    {
+        "problem_id": 39,
+        "solution_id": 29,
+        "similarity_score": 0.44951683282852173,
+        "matched_at": "2025-06-06 16:54:00"
+    },
+    {
+        "problem_id": 39,
+        "solution_id": 7,
+        "similarity_score": 0.4348543882369995,
+        "matched_at": "2025-06-06 16:54:00"
+    },
+    {
+        "problem_id": 39,
+        "solution_id": 24,
+        "similarity_score": 0.4337276816368103,
+        "matched_at": "2025-06-06 16:54:00"
+    },
+    {
+        "problem_id": 39,
+        "solution_id": 39,
+        "similarity_score": 0.4294506907463074,
+        "matched_at": "2025-06-06 16:54:00"
+    },
+    {
+        "problem_id": 39,
+        "solution_id": 52,
+        "similarity_score": 0.42740964889526367,
+        "matched_at": "2025-06-06 16:54:00"
+    },
+    {
+        "problem_id": 40,
+        "solution_id": 29,
+        "similarity_score": 0.4383070468902588,
+        "matched_at": "2025-06-06 16:54:00"
+    },
+    {
+        "problem_id": 40,
+        "solution_id": 27,
+        "similarity_score": 0.4366059899330139,
+        "matched_at": "2025-06-06 16:54:00"
+    },
+    {
+        "problem_id": 40,
+        "solution_id": 36,
+        "similarity_score": 0.428433895111084,
+        "matched_at": "2025-06-06 16:54:00"
+    },
+    {
+        "problem_id": 40,
+        "solution_id": 33,
+        "similarity_score": 0.42803657054901123,
+        "matched_at": "2025-06-06 16:54:00"
+    },
+    {
+        "problem_id": 40,
+        "solution_id": 39,
+        "similarity_score": 0.42259931564331055,
+        "matched_at": "2025-06-06 16:54:00"
+    },
+    {
+        "problem_id": 41,
+        "solution_id": 19,
+        "similarity_score": 0.4277121424674988,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 41,
+        "solution_id": 29,
+        "similarity_score": 0.4270259141921997,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 41,
+        "solution_id": 43,
+        "similarity_score": 0.4253884553909302,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 41,
+        "solution_id": 20,
+        "similarity_score": 0.42313051223754883,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 41,
+        "solution_id": 17,
+        "similarity_score": 0.4149931073188782,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 42,
+        "solution_id": 19,
+        "similarity_score": 0.4579004645347595,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 42,
+        "solution_id": 41,
+        "similarity_score": 0.43960875272750854,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 42,
+        "solution_id": 20,
+        "similarity_score": 0.4395553469657898,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 42,
+        "solution_id": 7,
+        "similarity_score": 0.4366804361343384,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 42,
+        "solution_id": 29,
+        "similarity_score": 0.43473881483078003,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 43,
+        "solution_id": 19,
+        "similarity_score": 0.42481523752212524,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 43,
+        "solution_id": 29,
+        "similarity_score": 0.4165424108505249,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 43,
+        "solution_id": 43,
+        "similarity_score": 0.4113353490829468,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 43,
+        "solution_id": 20,
+        "similarity_score": 0.40482574701309204,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 43,
+        "solution_id": 17,
+        "similarity_score": 0.4017741084098816,
+        "matched_at": "2025-06-06 16:54:01"
+    },
+    {
+        "problem_id": 44,
+        "solution_id": 12,
+        "similarity_score": 0.44612038135528564,
+        "matched_at": "2025-06-06 16:54:02"
+    },
+    {
+        "problem_id": 44,
+        "solution_id": 9,
+        "similarity_score": 0.42594921588897705,
+        "matched_at": "2025-06-06 16:54:02"
+    },
+    {
+        "problem_id": 44,
+        "solution_id": 13,
+        "similarity_score": 0.42594337463378906,
+        "matched_at": "2025-06-06 16:54:02"
+    },
+    {
+        "problem_id": 44,
+        "solution_id": 20,
+        "similarity_score": 0.42534375190734863,
+        "matched_at": "2025-06-06 16:54:02"
+    },
+    {
+        "problem_id": 44,
+        "solution_id": 7,
+        "similarity_score": 0.4207761883735657,
+        "matched_at": "2025-06-06 16:54:02"
+    },
+    {
+        "problem_id": 45,
+        "solution_id": 29,
+        "similarity_score": 0.48924875259399414,
+        "matched_at": "2025-06-06 16:54:03"
+    },
+    {
+        "problem_id": 45,
+        "solution_id": 36,
+        "similarity_score": 0.4585956335067749,
+        "matched_at": "2025-06-06 16:54:03"
+    },
+    {
+        "problem_id": 45,
+        "solution_id": 39,
+        "similarity_score": 0.4563135504722595,
+        "matched_at": "2025-06-06 16:54:03"
+    },
+    {
+        "problem_id": 45,
+        "solution_id": 27,
+        "similarity_score": 0.4387986660003662,
+        "matched_at": "2025-06-06 16:54:03"
+    },
+    {
+        "problem_id": 45,
+        "solution_id": 47,
+        "similarity_score": 0.4380924701690674,
+        "matched_at": "2025-06-06 16:54:03"
+    },
+    {
+        "problem_id": 46,
+        "solution_id": 46,
+        "similarity_score": 0.4534792900085449,
+        "matched_at": "2025-06-06 16:54:04"
+    },
+    {
+        "problem_id": 46,
+        "solution_id": 26,
+        "similarity_score": 0.44683629274368286,
+        "matched_at": "2025-06-06 16:54:04"
+    },
+    {
+        "problem_id": 46,
+        "solution_id": 11,
+        "similarity_score": 0.44371068477630615,
+        "matched_at": "2025-06-06 16:54:04"
+    },
+    {
+        "problem_id": 46,
+        "solution_id": 13,
+        "similarity_score": 0.43743687868118286,
+        "matched_at": "2025-06-06 16:54:04"
+    },
+    {
+        "problem_id": 46,
+        "solution_id": 12,
+        "similarity_score": 0.42829495668411255,
+        "matched_at": "2025-06-06 16:54:04"
+    },
+    {
+        "problem_id": 47,
+        "solution_id": 17,
+        "similarity_score": 0.4349486231803894,
+        "matched_at": "2025-06-06 16:54:05"
+    },
+    {
+        "problem_id": 47,
+        "solution_id": 24,
+        "similarity_score": 0.4186543822288513,
+        "matched_at": "2025-06-06 16:54:05"
+    },
+    {
+        "problem_id": 47,
+        "solution_id": 43,
+        "similarity_score": 0.41615116596221924,
+        "matched_at": "2025-06-06 16:54:05"
+    },
+    {
+        "problem_id": 47,
+        "solution_id": 39,
+        "similarity_score": 0.413971483707428,
+        "matched_at": "2025-06-06 16:54:05"
+    },
+    {
+        "problem_id": 47,
+        "solution_id": 29,
+        "similarity_score": 0.41370171308517456,
+        "matched_at": "2025-06-06 16:54:05"
+    },
+    {
+        "problem_id": 48,
+        "solution_id": 18,
+        "similarity_score": 0.42038607597351074,
+        "matched_at": "2025-06-06 16:54:05"
+    },
+    {
+        "problem_id": 48,
+        "solution_id": 20,
+        "similarity_score": 0.40931427478790283,
+        "matched_at": "2025-06-06 16:54:05"
+    },
+    {
+        "problem_id": 48,
+        "solution_id": 27,
+        "similarity_score": 0.4062897562980652,
+        "matched_at": "2025-06-06 16:54:05"
+    },
+    {
+        "problem_id": 48,
+        "solution_id": 3,
+        "similarity_score": 0.4049282670021057,
+        "matched_at": "2025-06-06 16:54:05"
+    },
+    {
+        "problem_id": 48,
+        "solution_id": 29,
+        "similarity_score": 0.40395694971084595,
+        "matched_at": "2025-06-06 16:54:05"
+    },
+    {
+        "problem_id": 49,
+        "solution_id": 52,
+        "similarity_score": 0.4261851906776428,
+        "matched_at": "2025-06-06 16:54:06"
+    },
+    {
+        "problem_id": 49,
+        "solution_id": 30,
+        "similarity_score": 0.4033774733543396,
+        "matched_at": "2025-06-06 16:54:06"
+    },
+    {
+        "problem_id": 49,
+        "solution_id": 20,
+        "similarity_score": 0.3996492028236389,
+        "matched_at": "2025-06-06 16:54:06"
+    },
+    {
+        "problem_id": 49,
+        "solution_id": 13,
+        "similarity_score": 0.39945805072784424,
+        "matched_at": "2025-06-06 16:54:06"
+    },
+    {
+        "problem_id": 49,
+        "solution_id": 22,
+        "similarity_score": 0.39826154708862305,
+        "matched_at": "2025-06-06 16:54:06"
+    },
+    {
+        "problem_id": 50,
+        "solution_id": 17,
+        "similarity_score": 0.46277642250061035,
+        "matched_at": "2025-06-06 16:54:06"
+    },
+    {
+        "problem_id": 50,
+        "solution_id": 20,
+        "similarity_score": 0.45904242992401123,
+        "matched_at": "2025-06-06 16:54:06"
+    },
+    {
+        "problem_id": 50,
+        "solution_id": 27,
+        "similarity_score": 0.44071537256240845,
+        "matched_at": "2025-06-06 16:54:06"
+    },
+    {
+        "problem_id": 50,
+        "solution_id": 25,
+        "similarity_score": 0.43659186363220215,
+        "matched_at": "2025-06-06 16:54:06"
+    },
+    {
+        "problem_id": 50,
+        "solution_id": 28,
+        "similarity_score": 0.4325982332229614,
+        "matched_at": "2025-06-06 16:54:06"
+    },
+    {
+        "problem_id": 51,
+        "solution_id": 29,
+        "similarity_score": 0.49285346269607544,
+        "matched_at": "2025-06-06 16:54:07"
+    },
+    {
+        "problem_id": 51,
+        "solution_id": 17,
+        "similarity_score": 0.44670069217681885,
+        "matched_at": "2025-06-06 16:54:07"
+    },
+    {
+        "problem_id": 51,
+        "solution_id": 4,
+        "similarity_score": 0.4366234540939331,
+        "matched_at": "2025-06-06 16:54:07"
+    },
+    {
+        "problem_id": 51,
+        "solution_id": 39,
+        "similarity_score": 0.43440115451812744,
+        "matched_at": "2025-06-06 16:54:07"
+    },
+    {
+        "problem_id": 51,
+        "solution_id": 43,
+        "similarity_score": 0.4325476288795471,
+        "matched_at": "2025-06-06 16:54:07"
+    },
+    {
+        "problem_id": 52,
+        "solution_id": 22,
+        "similarity_score": 0.4261501431465149,
+        "matched_at": "2025-06-06 16:54:08"
+    },
+    {
+        "problem_id": 52,
+        "solution_id": 29,
+        "similarity_score": 0.4253283143043518,
+        "matched_at": "2025-06-06 16:54:08"
+    },
+    {
+        "problem_id": 52,
+        "solution_id": 43,
+        "similarity_score": 0.4169946312904358,
+        "matched_at": "2025-06-06 16:54:08"
+    },
+    {
+        "problem_id": 52,
+        "solution_id": 51,
+        "similarity_score": 0.4146121144294739,
+        "matched_at": "2025-06-06 16:54:08"
+    },
+    {
+        "problem_id": 52,
+        "solution_id": 7,
+        "similarity_score": 0.4120493531227112,
+        "matched_at": "2025-06-06 16:54:08"
+    },
+    {
+        "problem_id": 53,
+        "solution_id": 17,
+        "similarity_score": 0.44323378801345825,
+        "matched_at": "2025-06-06 16:54:10"
+    },
+    {
+        "problem_id": 53,
+        "solution_id": 38,
+        "similarity_score": 0.4397932291030884,
+        "matched_at": "2025-06-06 16:54:10"
+    },
+    {
+        "problem_id": 53,
+        "solution_id": 47,
+        "similarity_score": 0.42809122800827026,
+        "matched_at": "2025-06-06 16:54:10"
+    },
+    {
+        "problem_id": 53,
+        "solution_id": 20,
+        "similarity_score": 0.42286717891693115,
+        "matched_at": "2025-06-06 16:54:10"
+    },
+    {
+        "problem_id": 53,
+        "solution_id": 27,
+        "similarity_score": 0.42005008459091187,
+        "matched_at": "2025-06-06 16:54:10"
+    },
+    {
+        "problem_id": 54,
+        "solution_id": 16,
+        "similarity_score": 0.4151010513305664,
+        "matched_at": "2025-06-06 16:54:11"
+    },
+    {
+        "problem_id": 54,
+        "solution_id": 19,
+        "similarity_score": 0.4127482771873474,
+        "matched_at": "2025-06-06 16:54:11"
+    },
+    {
+        "problem_id": 54,
+        "solution_id": 20,
+        "similarity_score": 0.40893447399139404,
+        "matched_at": "2025-06-06 16:54:11"
+    },
+    {
+        "problem_id": 54,
+        "solution_id": 25,
+        "similarity_score": 0.4082164764404297,
+        "matched_at": "2025-06-06 16:54:11"
+    },
+    {
+        "problem_id": 54,
+        "solution_id": 38,
+        "similarity_score": 0.40764904022216797,
+        "matched_at": "2025-06-06 16:54:11"
+    },
+    {
+        "problem_id": 55,
+        "solution_id": 38,
+        "similarity_score": 0.3818064332008362,
+        "matched_at": "2025-06-06 17:20:38"
+    },
+    {
+        "problem_id": 55,
+        "solution_id": 17,
+        "similarity_score": 0.3799334168434143,
+        "matched_at": "2025-06-06 17:20:38"
+    },
+    {
+        "problem_id": 55,
+        "solution_id": 35,
+        "similarity_score": 0.3680495619773865,
+        "matched_at": "2025-06-06 17:20:38"
+    },
+    {
+        "problem_id": 55,
+        "solution_id": 47,
+        "similarity_score": 0.36557453870773315,
+        "matched_at": "2025-06-06 17:20:38"
+    },
+    {
+        "problem_id": 55,
+        "solution_id": 2,
+        "similarity_score": 0.3654487729072571,
+        "matched_at": "2025-06-06 17:20:38"
+    },
+    {
+        "problem_id": 56,
+        "solution_id": 48,
+        "similarity_score": 0.4303283095359802,
+        "matched_at": "2025-06-06 17:20:38"
+    },
+    {
+        "problem_id": 56,
+        "solution_id": 14,
+        "similarity_score": 0.42139750719070435,
+        "matched_at": "2025-06-06 17:20:38"
+    },
+    {
+        "problem_id": 56,
+        "solution_id": 20,
+        "similarity_score": 0.4150386452674866,
+        "matched_at": "2025-06-06 17:20:38"
+    },
+    {
+        "problem_id": 56,
+        "solution_id": 26,
+        "similarity_score": 0.4122530221939087,
+        "matched_at": "2025-06-06 17:20:38"
+    },
+    {
+        "problem_id": 56,
+        "solution_id": 35,
+        "similarity_score": 0.41061079502105713,
+        "matched_at": "2025-06-06 17:20:38"
+    },
+    {
+        "problem_id": 57,
+        "solution_id": 20,
+        "similarity_score": 0.4353691339492798,
+        "matched_at": "2025-06-06 17:20:39"
+    },
+    {
+        "problem_id": 57,
+        "solution_id": 26,
+        "similarity_score": 0.43179577589035034,
+        "matched_at": "2025-06-06 17:20:39"
+    },
+    {
+        "problem_id": 57,
+        "solution_id": 27,
+        "similarity_score": 0.41676491498947144,
+        "matched_at": "2025-06-06 17:20:39"
+    },
+    {
+        "problem_id": 57,
+        "solution_id": 29,
+        "similarity_score": 0.4124891757965088,
+        "matched_at": "2025-06-06 17:20:39"
+    },
+    {
+        "problem_id": 57,
+        "solution_id": 38,
+        "similarity_score": 0.40915942192077637,
+        "matched_at": "2025-06-06 17:20:39"
+    },
+    {
+        "problem_id": 58,
+        "solution_id": 14,
+        "similarity_score": 0.413152813911438,
+        "matched_at": "2025-06-06 17:21:26"
+    },
+    {
+        "problem_id": 58,
+        "solution_id": 38,
+        "similarity_score": 0.4117581844329834,
+        "matched_at": "2025-06-06 17:21:26"
+    },
+    {
+        "problem_id": 58,
+        "solution_id": 48,
+        "similarity_score": 0.4105491638183594,
+        "matched_at": "2025-06-06 17:21:26"
+    },
+    {
+        "problem_id": 58,
+        "solution_id": 30,
+        "similarity_score": 0.41002726554870605,
+        "matched_at": "2025-06-06 17:21:26"
+    },
+    {
+        "problem_id": 58,
+        "solution_id": 29,
+        "similarity_score": 0.4039040803909302,
+        "matched_at": "2025-06-06 17:21:26"
+    },
+    {
+        "problem_id": 59,
+        "solution_id": 11,
+        "similarity_score": 0.4326344132423401,
+        "matched_at": "2025-06-06 18:47:36"
+    },
+    {
+        "problem_id": 59,
+        "solution_id": 27,
+        "similarity_score": 0.4261433482170105,
+        "matched_at": "2025-06-06 18:47:36"
+    },
+    {
+        "problem_id": 59,
+        "solution_id": 37,
+        "similarity_score": 0.42542022466659546,
+        "matched_at": "2025-06-06 18:47:36"
+    },
+    {
+        "problem_id": 59,
+        "solution_id": 29,
+        "similarity_score": 0.4239022731781006,
+        "matched_at": "2025-06-06 18:47:36"
+    },
+    {
+        "problem_id": 59,
+        "solution_id": 17,
+        "similarity_score": 0.42296433448791504,
+        "matched_at": "2025-06-06 18:47:36"
+    },
+    {
+        "problem_id": 60,
+        "solution_id": 16,
+        "similarity_score": 0.413025438785553,
+        "matched_at": "2025-06-06 18:47:36"
+    },
+    {
+        "problem_id": 60,
+        "solution_id": 27,
+        "similarity_score": 0.4023815989494324,
+        "matched_at": "2025-06-06 18:47:36"
+    },
+    {
+        "problem_id": 60,
+        "solution_id": 37,
+        "similarity_score": 0.40222668647766113,
+        "matched_at": "2025-06-06 18:47:36"
+    },
+    {
+        "problem_id": 60,
+        "solution_id": 49,
+        "similarity_score": 0.400429904460907,
+        "matched_at": "2025-06-06 18:47:36"
+    },
+    {
+        "problem_id": 60,
+        "solution_id": 38,
+        "similarity_score": 0.3956705331802368,
+        "matched_at": "2025-06-06 18:47:36"
+    },
+    {
+        "problem_id": 61,
+        "solution_id": 14,
+        "similarity_score": 0.46573930978775024,
+        "matched_at": "2025-06-06 18:47:37"
+    },
+    {
+        "problem_id": 61,
+        "solution_id": 11,
+        "similarity_score": 0.4626811742782593,
+        "matched_at": "2025-06-06 18:47:37"
+    },
+    {
+        "problem_id": 61,
+        "solution_id": 18,
+        "similarity_score": 0.4541730284690857,
+        "matched_at": "2025-06-06 18:47:37"
+    },
+    {
+        "problem_id": 61,
+        "solution_id": 50,
+        "similarity_score": 0.4538758397102356,
+        "matched_at": "2025-06-06 18:47:37"
+    },
+    {
+        "problem_id": 61,
+        "solution_id": 5,
+        "similarity_score": 0.43951427936553955,
+        "matched_at": "2025-06-06 18:47:37"
+    },
+    {
+        "problem_id": 62,
+        "solution_id": 53,
+        "similarity_score": 0.6222345530986786,
+        "matched_at": "2025-06-13 18:22:09"
+    },
+    {
+        "problem_id": 62,
+        "solution_id": 29,
+        "similarity_score": 0.4458760619163513,
+        "matched_at": "2025-06-13 18:22:09"
+    },
+    {
+        "problem_id": 62,
+        "solution_id": 17,
+        "similarity_score": 0.4311680197715759,
+        "matched_at": "2025-06-13 18:22:09"
+    },
+    {
+        "problem_id": 62,
+        "solution_id": 38,
+        "similarity_score": 0.42562586069107056,
+        "matched_at": "2025-06-13 18:22:09"
+    },
+    {
+        "problem_id": 62,
+        "solution_id": 27,
+        "similarity_score": 0.42051243782043457,
+        "matched_at": "2025-06-13 18:22:09"
+    },
+    {
+        "problem_id": 63,
+        "solution_id": 53,
+        "similarity_score": 0.523274689912796,
+        "matched_at": "2025-06-30 23:30:52"
+    },
+    {
+        "problem_id": 63,
+        "solution_id": 17,
+        "similarity_score": 0.45142149925231934,
+        "matched_at": "2025-06-30 23:30:52"
+    },
+    {
+        "problem_id": 63,
+        "solution_id": 38,
+        "similarity_score": 0.443992555141449,
+        "matched_at": "2025-06-30 23:30:52"
+    },
+    {
+        "problem_id": 63,
+        "solution_id": 29,
+        "similarity_score": 0.4366154074668884,
+        "matched_at": "2025-06-30 23:30:52"
+    },
+    {
+        "problem_id": 63,
+        "solution_id": 33,
+        "similarity_score": 0.4293791651725769,
+        "matched_at": "2025-06-30 23:30:52"
+    }
+]

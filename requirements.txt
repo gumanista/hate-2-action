@@ -1,3 +1,11 @@
 openai
-sqlite-vec
+psycopg2-binary
+pgvector
 typer
+fastapi
+uvicorn[standard]
+python-dotenv
+httpx
+langchain-openai
+langchain-community
+python-telegram-bot

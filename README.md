@@ -20,60 +20,17 @@ This project leverages machine learning to analyze user messages, detect social 
     cd <your-repository-directory>
     ```
 
-2. **Create and activate a virtual environment**:
+2. **Set up your environment variables**:
+
+    Create a `.env` file by copying the `.env.example` file and filling in the required values for `OPENAI_API_KEY`, `TELEGRAM_BOT_TOKEN`, and database credentials.
+
+3. **Build and run the application using Docker**:
 
     ```bash
-    python3 -m venv venv
-    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+    docker-compose up --build
     ```
 
-3. **Install required dependencies**:
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4. **Set up your OpenAI API Key**:
-
-    Ensure you have set your OpenAI API Key in your environment variables:
-
-    ```bash
-    export OPENAI_API_KEY="your_openai_api_key"
-    ```
-
-    For Windows (using Command Prompt):
-
-    ```bash
-    set OPENAI_API_KEY="your_openai_api_key"
-    ```
-
-5. **Set up SQLite database**:
-
-    Create an SQLite database (if not already created). You can specify your own database path by setting `DB_PATH` in the environment variables or directly in the script:
-
-    ```bash
-    export DB_PATH="path/to/your/database.db"
-    ```
-
-    Or for Windows (Command Prompt):
-
-    ```bash
-    set DB_PATH="path\\to\\your\\database.db"
-    ```
-
-    Run the script to create the necessary tables in the database:
-
-    ```bash
-    python3 cli.py init
-    ```
-
-6. **Run the first-time setup**:
-
-    On the first run, you will need to precompute and save embeddings for the solutions, projects, and their relations (projects ↔ solutions).
-
-    ```bash
-    python3 cli.py init
-    ```
+    This command will build the Docker image, start the database, run the database migrations, and launch the API and bot services.
 
 ## Database Schema
 

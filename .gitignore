@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+.data
+venv/
+.env
+donation.db
