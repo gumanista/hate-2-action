@@ -87,7 +87,7 @@ jobs:
             DEPLOY_DIR="${DEPLOYMENT_BASE}/${ENVIRONMENT_SLUG}"
             mkdir -p ${DEPLOY_DIR}
             
-            # Create .env file
+            echo "Create .env file"
             cat << EOF > "${DEPLOY_DIR}/.env"
             POSTGRES_USER=${POSTGRES_USER}
             POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -98,7 +98,7 @@ jobs:
             TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
             EOF
             
-            # Create docker-compose.prod.yml
+            echo "Create docker-compose.prod.yml"
             cat << EOF > "${DEPLOY_DIR}/docker-compose.prod.yml"
             version: '3.8'
             services:
