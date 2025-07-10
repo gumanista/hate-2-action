@@ -6,6 +6,7 @@ fastapi
 uvicorn[standard]
 python-dotenv
 httpx
+langchain
+langchain-core
 langchain-openai
-langchain-community
 python-telegram-bot

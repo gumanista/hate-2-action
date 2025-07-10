@@ -2,8 +2,8 @@ import psycopg2
 import logging
 import os
 from typing import List, Tuple
-import psycopg2
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
+from pgvector.psycopg2 import register_vector
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ class Database:
             host=os.environ.get("POSTGRES_HOST"),
             port=os.environ.get("POSTGRES_PORT")
         )
+        register_vector(self.conn)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -53,24 +54,34 @@ class Database:
             logger.error("DB query failed: %s", e)
             return None
 
+    def get_messages(self) -> List[Tuple[int, int, str, str, str]]:
+        try:
+            cur = self.conn.cursor()
+            cur.execute("SELECT message_id, user_id, user_username, chat_title, text FROM messages")
+            return cur.fetchall()
+        except psycopg2.Error as e:
+            logger.error("DB query failed: %s", e)
+            return []
+
     def upsert_problem(self, name: str, context: str) -> int | None:
         try:
             cur = self.conn.cursor()
             cur.execute(
-                "SELECT problem_id FROM problems WHERE name=%s AND context=%s LIMIT 1",
-                (name, context)
+                "SELECT problem_id FROM problems WHERE name=%s LIMIT 1",
+                (name,)
             )
             row = cur.fetchone()
             if row:
                 return row[0]
             cur.execute(
-                "INSERT INTO problems (name, context) VALUES (%s, %s) RETURNING problem_id",
-                (name, context)
+                "INSERT INTO problems (name, context, is_processed) VALUES (%s, %s, %s) RETURNING problem_id",
+                (name, context, 0)
             )
             problem_id = cur.fetchone()[0]
             self.conn.commit()
             return problem_id
         except psycopg2.Error as e:
+            self.conn.rollback()
             logger.error("DB upsert failed: %s", e)
             return None
 
@@ -78,8 +89,8 @@ class Database:
         try:
             cur = self.conn.cursor()
             cur.execute(
-                "SELECT solution_id FROM solutions WHERE name=%s AND context=%s LIMIT 1",
-                (name, context)
+                "SELECT solution_id FROM solutions WHERE name=%s LIMIT 1",
+                (name,)
             )
             row = cur.fetchone()
             if row:
@@ -92,133 +103,151 @@ class Database:
             self.conn.commit()
             return solution_id
         except psycopg2.Error as e:
+            self.conn.rollback()
             logger.error("DB upsert failed: %s", e)
             return None
 
     def embed_new_solutions_and_projects(self, embedder: OpenAIEmbeddings) -> Tuple[List[int], List[int]]:
-        cur = self.conn.cursor()
+        try:
+            cur = self.conn.cursor()
 
-        # --- Solutions ---
-        cur.execute("SELECT solution_id FROM solutions;")
-        all_solution_ids = {row[0] for row in cur.fetchall()}
-        cur.execute("SELECT solution_id FROM vec_solutions;")
-        embedded_solution_ids = {row[0] for row in cur.fetchall()}
-        new_solution_ids = list(all_solution_ids - embedded_solution_ids)
+            # --- Solutions ---
+            cur.execute("SELECT solution_id FROM solutions;")
+            all_solution_ids = {row[0] for row in cur.fetchall()}
+            cur.execute("SELECT solution_id FROM vec_solutions;")
+            embedded_solution_ids = {row[0] for row in cur.fetchall()}
+            new_solution_ids = list(all_solution_ids - embedded_solution_ids)
 
-        if new_solution_ids:
-            placeholders = ",".join("%s" for _ in new_solution_ids)
-            cur.execute(f"SELECT solution_id, context FROM solutions WHERE solution_id IN ({placeholders})",
-                        new_solution_ids)
-            rows_to_embed = cur.fetchall()
-            for sid, context in rows_to_embed:
-                if not context:
-                    continue
-                vec = embedder.embed_documents([context])[0]
-                cur.execute(
-                    "INSERT INTO vec_solutions(solution_id, embedding) VALUES (%s, %s) ON CONFLICT (solution_id) DO UPDATE SET embedding = EXCLUDED.embedding;",
-                    (sid, vec))
-            self.conn.commit()
+            if new_solution_ids:
+                placeholders = ",".join("%s" for _ in new_solution_ids)
+                cur.execute(f"SELECT solution_id, context FROM solutions WHERE solution_id IN ({placeholders})",
+                            new_solution_ids)
+                rows_to_embed = cur.fetchall()
+                for sid, context in rows_to_embed:
+                    if not context:
+                        continue
+                    vec = embedder.embed_documents([context])[0]
+                    cur.execute(
+                        "INSERT INTO vec_solutions(solution_id, embedding) VALUES (%s, %s) ON CONFLICT (solution_id) DO UPDATE SET embedding = EXCLUDED.embedding;",
+                        (sid, vec))
+                self.conn.commit()
 
-        # --- Projects ---
-        cur.execute("SELECT project_id FROM projects;")
-        all_project_ids = {row[0] for row in cur.fetchall()}
-        cur.execute("SELECT project_id FROM vec_projects;")
-        embedded_project_ids = {row[0] for row in cur.fetchall()}
-        new_project_ids = list(all_project_ids - embedded_project_ids)
+            # --- Projects ---
+            cur.execute("SELECT project_id FROM projects;")
+            all_project_ids = {row[0] for row in cur.fetchall()}
+            cur.execute("SELECT project_id FROM vec_projects;")
+            embedded_project_ids = {row[0] for row in cur.fetchall()}
+            new_project_ids = list(all_project_ids - embedded_project_ids)
 
-        if new_project_ids:
-            placeholders = ",".join("%s" for _ in new_project_ids)
-            cur.execute(f"SELECT project_id, description FROM projects WHERE project_id IN ({placeholders})",
-                        new_project_ids)
-            rows_to_embed = cur.fetchall()
-            for pid, desc in rows_to_embed:
-                if not desc:
-                    continue
-                vec = embedder.embed_documents([desc])[0]
-                cur.execute(
-                    "INSERT INTO vec_projects(project_id, embedding) VALUES (%s, %s) ON CONFLICT (project_id) DO UPDATE SET embedding = EXCLUDED.embedding;",
-                    (pid, vec))
-            self.conn.commit()
+            if new_project_ids:
+                placeholders = ",".join("%s" for _ in new_project_ids)
+                cur.execute(f"SELECT project_id, description FROM projects WHERE project_id IN ({placeholders})",
+                            new_project_ids)
+                rows_to_embed = cur.fetchall()
+                for pid, desc in rows_to_embed:
+                    if not desc:
+                        continue
+                    vec = embedder.embed_documents([desc])[0]
+                    cur.execute(
+                        "INSERT INTO vec_projects(project_id, embedding) VALUES (%s, %s) ON CONFLICT (project_id) DO UPDATE SET embedding = EXCLUDED.embedding;",
+                        (pid, vec))
+                self.conn.commit()
 
-        return new_solution_ids, new_project_ids
+            return new_solution_ids, new_project_ids
+        except psycopg2.Error as e:
+            self.conn.rollback()
+            logger.error("DB embedding failed: %s", e)
+            return [], []
 
     def match_new_solutions_to_projects(self, new_solution_ids: List[int], k_proj: int = 5):
         if not new_solution_ids:
             return
+        try:
+            cur = self.conn.cursor()
+            for sid in new_solution_ids:
+                cur.execute("SELECT embedding FROM vec_solutions WHERE solution_id = %s", (sid,))
+                row = cur.fetchone()
+                if not row:
+                    logger.warning(f"No embedding found for solution_id {sid}. Skipping.")
+                    continue
+                target_embedding = row[0]
 
-        cur = self.conn.cursor()
-        for sid in new_solution_ids:
-            cur.execute("SELECT embedding FROM vec_solutions WHERE solution_id = %s", (sid,))
-            target_embedding = cur.fetchone()[0]
-
-            cur.execute(
-                """
-                SELECT project_id, 1 - (embedding <=> %s) as similarity
-                FROM vec_projects
-                ORDER BY similarity DESC
-                LIMIT %s
-                """,
-                (target_embedding, k_proj)
-            )
-            matches = cur.fetchall()
-
-            for project_id, similarity_score in matches:
                 cur.execute(
-                    "INSERT INTO projects_solutions(project_id, solution_id, similarity_score) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-                    (project_id, sid, similarity_score)
+                    """
+                    SELECT project_id, 1 - (embedding <-> %s) as similarity
+                    FROM vec_projects
+                    ORDER BY embedding <-> %s
+                    LIMIT %s
+                    """,
+                    (target_embedding, target_embedding, k_proj)
                 )
-        self.conn.commit()
+                matches = cur.fetchall()
+
+                for project_id, similarity_score in matches:
+                    cur.execute(
+                        "INSERT INTO projects_solutions(project_id, solution_id, similarity_score) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+                        (project_id, sid, similarity_score)
+                    )
+            self.conn.commit()
+        except psycopg2.Error as e:
+            self.conn.rollback()
+            logger.error("DB matching failed: %s", e)
 
     def embed_and_match_new_problems(self, embedder: OpenAIEmbeddings, problem_ids: List[int], k: int = 5) -> \
             List[int]:
-        cur = self.conn.cursor()
-        matched_solution_ids = []
+        try:
+            cur = self.conn.cursor()
+            matched_solution_ids = []
 
-        for pid in problem_ids:
-            cur.execute("SELECT context FROM problems WHERE problem_id = %s", (pid,))
-            row = cur.fetchone()
-            if row is None:
-                continue
-            problem_text = row[0]
+            for pid in problem_ids:
+                cur.execute("SELECT context FROM problems WHERE problem_id = %s", (pid,))
+                row = cur.fetchone()
+                if row is None:
+                    continue
+                problem_text = row[0]
 
-            vec = embedder.embed_documents([problem_text])[0]
-            cur.execute(
-                "INSERT INTO vec_problems(problem_id, embedding) VALUES (%s, %s) ON CONFLICT (problem_id) DO UPDATE SET embedding = EXCLUDED.embedding;",
-                (pid, vec)
-            )
-            self.conn.commit()
+                vec = embedder.embed_documents([problem_text])[0]
+                cur.execute(
+                    "INSERT INTO vec_problems(problem_id, embedding) VALUES (%s, %s) ON CONFLICT (problem_id) DO UPDATE SET embedding = EXCLUDED.embedding;",
+                    (pid, vec)
+                )
+                self.conn.commit()
 
-            cur.execute(
-                """
-                INSERT INTO problems_solutions(problem_id, solution_id, similarity_score)
-                SELECT %s, solution_id, 1 - (embedding <=> %s)
-                FROM vec_solutions
-                ORDER BY embedding <=> %s
-                LIMIT %s
-                ON CONFLICT DO NOTHING
-                """,
-                (pid, vec, vec, k)
-            )
-            self.conn.commit()
+                cur.execute(
+                    """
+                    INSERT INTO problems_solutions(problem_id, solution_id, similarity_score)
+                    SELECT %s, solution_id, 1 - (embedding <-> %s::vector)
+                    FROM vec_solutions
+                    ORDER BY embedding <-> %s::vector
+                    LIMIT %s
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (pid, vec, vec, k)
+                )
+                self.conn.commit()
 
-            cur.execute(
-                "SELECT solution_id, similarity_score FROM problems_solutions WHERE problem_id = %s ORDER BY similarity_score DESC LIMIT %s",
-                (pid, k)
-            )
-            rows = cur.fetchall()
-            matched_solution_ids.extend(r[0] for r in rows)
+                cur.execute(
+                    "SELECT solution_id, similarity_score FROM problems_solutions WHERE problem_id = %s ORDER BY similarity_score DESC LIMIT %s",
+                    (pid, k)
+                )
+                rows = cur.fetchall()
+                matched_solution_ids.extend(r[0] for r in rows)
 
-            cur.execute("UPDATE problems SET is_processed = TRUE WHERE problem_id = %s;", (pid,))
-            self.conn.commit()
+                cur.execute("UPDATE problems SET is_processed = 1 WHERE problem_id = %s;", (pid,))
+                self.conn.commit()
 
-        seen = set()
-        unique_solution_ids = []
-        for sid in matched_solution_ids:
-            if sid not in seen:
-                seen.add(sid)
-                unique_solution_ids.append(sid)
+            seen = set()
+            unique_solution_ids = []
+            for sid in matched_solution_ids:
+                if sid not in seen:
+                    seen.add(sid)
+                    unique_solution_ids.append(sid)
 
-        return unique_solution_ids
+            return unique_solution_ids
+        except psycopg2.Error as e:
+            self.conn.rollback()
+            logger.error("DB embedding and matching failed: %s", e)
+            return []
 
     def collect_project_ids_for_solutions(self, solution_ids: List[int], top_n: int = 5) -> List[int]:
         if not solution_ids:
@@ -247,8 +276,21 @@ class Database:
         try:
             cur = self.conn.cursor()
             placeholders = ",".join("%s" for _ in problem_ids)
-            query = f"SELECT name, context FROM problems WHERE problem_id IN ({placeholders})"
+            query = f"SELECT problem_id, name, context FROM problems WHERE problem_id IN ({placeholders})"
             cur.execute(query, tuple(problem_ids))
+            return cur.fetchall()
+        except psycopg2.Error as e:
+            logger.error("DB query failed: %s", e)
+            return []
+
+    def get_solutions_by_ids(self, solution_ids: List[int]) -> List[Tuple[str, str]]:
+        if not solution_ids:
+            return []
+        try:
+            cur = self.conn.cursor()
+            placeholders = ",".join("%s" for _ in solution_ids)
+            query = f"SELECT solution_id, name, context FROM solutions WHERE solution_id IN ({placeholders})"
+            cur.execute(query, tuple(solution_ids))
             return cur.fetchall()
         except psycopg2.Error as e:
             logger.error("DB query failed: %s", e)
@@ -262,7 +304,7 @@ class Database:
             selected_ids = project_ids[:top_n]
             placeholders = ",".join("%s" for _ in selected_ids)
             query = (
-                f"SELECT name, description, website, contact_email "
+                f"SELECT project_id, name, description, website, contact_email "
                 f"FROM projects WHERE project_id IN ({placeholders})"
             )
             cur.execute(query, tuple(selected_ids))
@@ -410,7 +452,7 @@ class Database:
                 values.append(context)
             if is_processed is not None:
                 fields.append("is_processed = %s")
-                values.append(is_processed)
+                values.append(int(is_processed))
 
             if not fields:
                 return False

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import List, Optional
 
 
 class Project(BaseModel):
@@ -35,7 +35,7 @@ class Problem(BaseModel):
     name: str
     context: Optional[str] = None
     created_at: Optional[str] = None
-    is_processed: Optional[bool] = False
+    is_processed: Optional[int] = 0
 
     class Config:
         orm_mode = True
@@ -50,7 +50,7 @@ class ProblemCreate(BaseModel):
 class ProblemUpdate(BaseModel):
     name: Optional[str] = None
     context: Optional[str] = None
-    is_processed: Optional[bool] = None
+    is_processed: Optional[int] = None
 
 
 class Solution(BaseModel):
@@ -94,3 +94,22 @@ class OrganizationUpdate(BaseModel):
 
 class ProcessMessageRequest(BaseModel):
     message: str
+
+
+class ProcessMessageResponse(BaseModel):
+    reply_text: str
+    problems: list[Problem]
+    solutions: list[Solution]
+    projects: list[Project]
+
+
+class Message(BaseModel):
+    message_id: int
+    user_id: int
+    user_username: str
+    chat_title: Optional[str] = None
+    text: str
+
+    class Config:
+        orm_mode = True
+        from_attributes = True

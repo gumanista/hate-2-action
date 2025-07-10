@@ -5,7 +5,7 @@ import json
 import time
 from typing import List, Dict
 
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage, AIMessage
 
 from server.database import Database
@@ -115,7 +115,7 @@ def call_llm(prompt: str) -> str:
     llm = ChatOpenAI(model_name=MODEL_NAME, temperature=0.1)
     for attempt in range(MAX_RETRIES + 1):
         try:
-            response: AIMessage = llm([SystemMessage(content=prompt)])
+            response: AIMessage = llm.invoke([SystemMessage(content=prompt)])
             txt = response.content.strip()
             if txt.startswith("```json"):
                 txt = txt.split("```json", 1)[1]
@@ -175,7 +175,7 @@ def detect_problems_and_solutions_llm(message: str) -> List[Dict[str, str]]:
 
     for attempt in range(MAX_RETRIES + 1):
         try:
-            response: AIMessage = llm(messages)
+            response: AIMessage = llm.invoke(messages)
             out = robust_json_load(response.content, SCHEMA_HINT)
             return out.get("problems", [])
         except Exception as e:
@@ -184,23 +184,28 @@ def detect_problems_and_solutions_llm(message: str) -> List[Dict[str, str]]:
             time.sleep(REQUEST_DELAY_SECONDS)
 
 
-def detect_problems(db: Database, message: str) -> List[int]:
+def detect_problems(db: Database, message: str) -> tuple[list[int], list[int]]:
     """
     1) Run detect_problems_and_solutions_llm(...) to get a list of {"name", "context", "solution"}.
-    2) Upsert each problem into `problems(...)`.
-    3) Return a list of all problem_id values inserted/updated.
+    2) Upsert each problem and solution into `problems(...)` and `solutions(...)`.
+    3) Return a list of all problem_id and solution_id values inserted/updated.
     """
     openai_key = os.getenv("OPENAI_API_KEY")
     if not openai_key:
         raise RuntimeError("OPENAI_API_KEY not set")
 
     # 1) Call LLM → list of problem dicts
-    problems = detect_problems_and_solutions_llm(message)
+    problems_and_solutions = detect_problems_and_solutions_llm(message)
 
-    # 2) Upsert into `problems` and collect problem_ids
+    # 2) Upsert into `problems` and `solutions` and collect problem_ids and solution_ids
     problem_ids = []
-    for p in problems:
+    solution_ids = []
+    for p in problems_and_solutions:
         pid = db.upsert_problem(p["name"], p["context"])
-        problem_ids.append(pid)
+        if pid is not None:
+            problem_ids.append(pid)
+        sid = db.upsert_solution(p["name"], p["solution"])
+        if sid is not None:
+            solution_ids.append(sid)
 
-    return problem_ids
+    return problem_ids, solution_ids

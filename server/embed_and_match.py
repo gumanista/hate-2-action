@@ -1,9 +1,10 @@
 from typing import List, Tuple
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from server.database import Database
 def match_embeddings(
         db: Database,
         problem_ids: List[int],
+        solution_ids: List[int],
         k: int = 5,
         k_proj: int = 3
 ) -> Tuple[List[int], List[int]]:
@@ -19,7 +20,8 @@ def match_embeddings(
     embedder = OpenAIEmbeddings()
     new_sol_ids, _ = db.embed_new_solutions_and_projects(embedder)
     db.match_new_solutions_to_projects(new_sol_ids, k_proj)
-    sol_ids = db.embed_and_match_new_problems(embedder, problem_ids, k)
-    proj_ids = db.collect_project_ids_for_solutions(sol_ids, top_n=k)
-    return sol_ids, proj_ids
+    matched_sol_ids = db.embed_and_match_new_problems(embedder, problem_ids, k)
+    all_sol_ids = sorted(list(set(solution_ids + matched_sol_ids)))
+    proj_ids = db.collect_project_ids_for_solutions(all_sol_ids, top_n=k)
+    return all_sol_ids, proj_ids
 

@@ -30,6 +30,9 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    volumes:
+      - ./scripts:/app/scripts
+      - ./server:/app/server
     depends_on:
       - db-seed
 

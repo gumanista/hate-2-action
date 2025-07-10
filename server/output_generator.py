@@ -1,7 +1,7 @@
 import os
 from typing import List, Dict
 
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage
 
 from server.database import Database
@@ -34,22 +34,25 @@ def generate_output(
         db: Database,
         message_id: int,
         problem_ids: List[int],
+        solution_ids: List[int],
+        project_ids: List[int],
         top_n: int = DEFAULT_TOP_N,
-        answer_style: str = "empathetic",
-        project_ids: List[int] = None
-) -> str:
+        answer_style: str = "empathetic"
+) -> dict:
     """
     1) Fetch original message text from `messages`.
     2) Fetch detected problem names & contexts for each problem_id.
-    3) Fetch project details for each project_id.
-    4) Construct a single prompt that includes:
+    3) Fetch solution details for each solution_id.
+    4) Fetch project details for each project_id.
+    5) Construct a single prompt that includes:
        - The user’s original message
        - A numbered list of detected problems
+       - A numbered list of solutions
        - A numbered list of candidate projects (with metadata)
        - Clear instructions asking the LLM to write a concise, empathetic response.
-    5) Use LangChain’s ChatOpenAI to generate the reply.
-    6) Insert that reply into `responses(message_id, text)`.
-    7) Return the reply text.
+    6) Use LangChain’s ChatOpenAI to generate the reply.
+    7) Insert that reply into `responses(message_id, text)`.
+    8) Return the reply text, problem_ids, solution_ids, and project_ids.
     """
     openai_key = os.getenv("OPENAI_API_KEY")
     if not openai_key:
@@ -62,6 +65,7 @@ def generate_output(
         raise ValueError(f"No message found with message_id = {message_id}")
 
     problems_data = db.get_problems_by_ids(problem_ids)
+    solutions_data = db.get_solutions_by_ids(solution_ids)
     projects_data = db.get_projects_by_ids(project_ids, top_n)
 
     # Build the LLM prompt
@@ -72,7 +76,7 @@ def generate_output(
 
     if problems_data:
         prompt_lines.append("Detected problems:")
-        for idx, (pname, pctx) in enumerate(problems_data, start=1):
+        for idx, (_, pname, pctx) in enumerate(problems_data, start=1):
             line = f"{idx}. {pname}"
             if pctx:
                 line += f" (Context: {pctx})"
@@ -81,9 +85,20 @@ def generate_output(
     else:
         prompt_lines.append("No specific problems were detected.\n")
 
+    if solutions_data:
+        prompt_lines.append("Recommended solutions:")
+        for idx, (_, sol_name, sol_ctx) in enumerate(solutions_data, start=1):
+            line = f"{idx}. {sol_name}"
+            if sol_ctx:
+                line += f" (Context: {sol_ctx})"
+            prompt_lines.append(line)
+        prompt_lines.append("")
+    else:
+        prompt_lines.append("No specific solutions were detected.\n")
+
     if projects_data:
         prompt_lines.append("Recommended projects:")
-        for idx, (proj_name, proj_desc, proj_site, proj_email) in enumerate(projects_data, start=1):
+        for idx, (_, proj_name, proj_desc, proj_site, proj_email) in enumerate(projects_data, start=1):
             line = f"{idx}. {proj_name}"
             if proj_desc:
                 line += f": {proj_desc}"
@@ -105,10 +120,15 @@ def generate_output(
         SystemMessage(content=style["system_prompt"]),
         HumanMessage(content=full_prompt)
     ]
-    response = llm(messages)
+    response = llm.invoke(messages)
     reply_text = response.content.strip()
 
     # Insert reply into `responses`
     db.add_response(message_id, reply_text)
 
-    return reply_text
+    return {
+        "reply_text": reply_text,
+        "problems": problems_data,
+        "solutions": solutions_data,
+        "projects": projects_data,
+    }

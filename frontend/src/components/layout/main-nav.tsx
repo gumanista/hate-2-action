@@ -62,6 +62,28 @@ export function MainNav() {
         >
           Solutions
         </Link>
+        <Link
+          href="/process-message"
+          className={cn(
+            "transition-colors hover:text-foreground/80",
+            pathname?.startsWith("/process-message")
+              ? "text-foreground"
+              : "text-foreground/60"
+          )}
+        >
+          Process Message
+        </Link>
+        <Link
+          href="/messages"
+          className={cn(
+            "transition-colors hover:text-foreground/80",
+            pathname?.startsWith("/messages")
+              ? "text-foreground"
+              : "text-foreground/60"
+          )}
+        >
+          Messages
+        </Link>
       </nav>
     </div>
   );

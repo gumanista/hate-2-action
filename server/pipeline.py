@@ -6,7 +6,7 @@ from server.output_generator import generate_output
 from server.database import Database
 
 
-def run(message: str) -> str:
+def run(message: str) -> dict:
     """
     Orchestrates the three stages:
       1) detect problems in the message,
@@ -15,11 +15,23 @@ def run(message: str) -> str:
     Returns the chatbot’s reply text.
     """
     with Database() as db:
+        # TODO: user_id, user_username, and chat_title are hardcoded.
+        # They should be passed from the request.
+        message_id = db.add_message(
+            user_id=0,
+            user_username="api_user",
+            chat_title=None,
+            text=message
+        )
+        if message_id is None:
+            # Or handle this error more gracefully
+            raise ValueError("Failed to save message to the database.")
+
         # 1. Detect and persist problems
-        problem_ids = detect_problems(db, message)
+        problem_ids, solution_ids = detect_problems(db, message)
 
         # 2. Compute embeddings & retrieve top matches
-        _, project_ids = match_embeddings(db, problem_ids)
+        all_solution_ids, project_ids = match_embeddings(db, problem_ids, solution_ids)
 
         # 3. Generate and return the final reply
-        return generate_output(db, -1, problem_ids, project_ids=project_ids)
+        return generate_output(db, message_id, problem_ids, all_solution_ids, project_ids)

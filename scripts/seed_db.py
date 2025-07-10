@@ -55,7 +55,7 @@ def create_table_from_json(cursor, table_name, data):
         for key, value in first_item.items():
             col_type = get_column_type(key, value)
             if key == pk_col:
-                columns_with_types.append(f'"{key}" {col_type} PRIMARY KEY')
+                columns_with_types.append(f'"{key}" SERIAL PRIMARY KEY')
             else:
                 columns_with_types.append(f'"{key}" {col_type}')
     else:
@@ -71,7 +71,7 @@ def create_table_from_json(cursor, table_name, data):
     print(f"Creating table {table_name}...")
     cursor.execute(create_table_sql)
 
-    return column_names_for_insert
+    return column_names_for_insert, pk_col
 
 
 def insert_data(cursor, table_name, columns, data):
@@ -111,7 +111,11 @@ def main():
 
         json_files = [f for f in os.listdir(DATA_DIR) if f.endswith(".json")]
 
+        seeded_tables = []
         for filename in sorted(json_files):
+            if filename.startswith("vec_"):
+                print(f"Skipping vector file: {filename}")
+                continue
             table_name = os.path.splitext(filename)[0]
             file_path = os.path.join(DATA_DIR, filename)
 
@@ -128,12 +132,34 @@ def main():
                 print(f"File {filename} is empty. Skipping.")
                 continue
 
-            columns = create_table_from_json(cursor, table_name, data)
+            columns, pk_col = create_table_from_json(cursor, table_name, data)
             if columns:
                 insert_data(cursor, table_name, columns, data)
+                if pk_col:
+                    seeded_tables.append({'table': table_name, 'pk': pk_col})
 
         conn.commit()
         print("\nDatabase seeding completed successfully.")
+
+        print("Resetting sequence counters...")
+        for info in seeded_tables:
+            table = info['table']
+            pk = info['pk']
+            # By convention, sequence is named <table>_<pk>_seq
+            seq = f"{table}_{pk}_seq"
+            try:
+                cursor.execute(f"SELECT MAX({pk}) FROM {table}")
+                max_id = cursor.fetchone()[0]
+                if max_id is not None:
+                    print(f"Resetting sequence {seq} to {max_id}")
+                    cursor.execute(f"SELECT setval('{seq}', {max_id})")
+                else:
+                    print(f"Table {table} is empty, not resetting sequence {seq}.")
+            except psycopg2.Error as e:
+                print(f"Could not reset sequence {seq}. It might not exist or table is empty. Error: {e}")
+                conn.rollback()  # Rollback the single failed sequence update
+        
+        conn.commit()
 
     except psycopg2.Error as e:
         print(f"Database error: {e}")

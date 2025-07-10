@@ -5,6 +5,8 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from server.schemas import (
     ProcessMessageRequest,
+    ProcessMessageResponse,
+    Message,
     Project, ProjectCreate, ProjectUpdate,
     Problem, ProblemCreate, ProblemUpdate,
     Solution, SolutionCreate, SolutionUpdate,
@@ -41,16 +43,24 @@ async def root(api_key: str = Depends(get_api_key)):
     return {"message": "API is running"}
 
 
-@app.post("/process-message")
+@app.post("/process-message", response_model=ProcessMessageResponse)
 async def process_message(request: ProcessMessageRequest, api_key: str = Depends(get_api_key)):
     try:
         logger.info(f"Processing message: {request.message}")
         result = process_message_run(request.message)
         logger.info("Message processed successfully.")
-        return {"result": result}
+        return result
     except Exception as e:
         logger.error(f"Error processing message: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+# Messages
+@app.get("/messages", response_model=List[Message])
+async def get_messages(api_key: str = Depends(get_api_key)):
+    with Database() as db:
+        messages = db.get_messages()
+        return [Message(message_id=m[0], user_id=m[1], user_username=m[2], chat_title=m[3], text=m[4]) for m in messages]
 
 
 # Projects
