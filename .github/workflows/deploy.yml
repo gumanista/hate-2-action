@@ -97,6 +97,7 @@ jobs:
             export POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             export POSTGRES_DB=${{ secrets.POSTGRES_DB }}
             export API_KEY=${{ secrets.API_KEY }}
+            export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             export TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
             
             DEPLOY_DIR="${DEPLOYMENT_BASE}/${ENVIRONMENT_SLUG}"
@@ -104,6 +105,7 @@ jobs:
             
             echo "Create .env file"
             cat << EOF > "${DEPLOY_DIR}/.env"
+            OPENAI_API_KEY=${OPENAI_API_KEY}
             POSTGRES_USER=${POSTGRES_USER}
             POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
             POSTGRES_DB=${POSTGRES_DB}
