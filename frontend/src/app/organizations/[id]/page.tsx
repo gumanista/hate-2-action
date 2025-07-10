@@ -14,7 +14,7 @@ export default function OrganizationDetailsPage() {
         if (id) {
             const fetchOrganization = async () => {
                 try {
-                    const org = await getOrganization(id as string);
+                    const org = await getOrganization(Number(id));
                     setOrganization(org);
                 } catch (error) {
                     console.error('Failed to fetch organization', error);
