@@ -61,7 +61,7 @@ export default function SolutionPage() {
       <p className="mb-4">{solution.context}</p>
       <div className="flex gap-4">
         <Button asChild>
-          <Link href={`/solutions/${solution.id}/edit`}>Edit</Link>
+          <Link href={`/solutions/${solution.solution_id}/edit`}>Edit</Link>
         </Button>
         <Button variant="destructive" onClick={handleDelete}>
           Delete

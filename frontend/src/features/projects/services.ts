@@ -1,10 +1,22 @@
-import { Project } from './types';
-import { fetcher } from '../../lib/api';
+import { Project, ProjectCreate, ProjectUpdate } from './types/index';
+import * as api from './services/api';
 
-export const getProjects = async (): Promise<Project[]> => {
-  return fetcher('/projects');
+export const getProjects = (): Promise<Project[]> => {
+    return api.getProjects();
 };
 
-export const getProject = async (id: string): Promise<Project> => {
-  return fetcher(`/projects/${id}`);
+export const getProject = (id: number): Promise<Project> => {
+    return api.getProject(id);
+};
+
+export const createProject = (project: ProjectCreate): Promise<Project> => {
+    return api.createProject(project);
+};
+
+export const updateProject = (id: number, project: ProjectUpdate): Promise<Project> => {
+    return api.updateProject(id, project);
+};
+
+export const deleteProject = (id: number): Promise<void> => {
+    return api.deleteProject(id);
 };

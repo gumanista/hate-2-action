@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getProblem, updateProblem } from '@/features/problems/services/api';
-import { Problem, ProblemUpdate } from '@/types';
+import { Problem, ProblemUpdate } from '@/features/problems/types';
 import { ProblemForm } from '@/features/problems/components/ProblemForm';
 
 export default function EditProblemPage() {
