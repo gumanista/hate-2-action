@@ -109,6 +109,11 @@ jobs:
                   - ./.data/postgres:/var/lib/postgresql/data
                 networks:
                   - default
+                healthcheck:
+                  test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+                  interval: 5s
+                  timeout: 5s
+                  retries: 5
               api:
                 image: ${REGISTRY_IMAGE}:${CI_COMMIT_SHA}
                 env_file: .env
@@ -119,10 +124,11 @@ jobs:
                   - "traefik.docker.network=traefik-public"
                   - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.rule=Host(\`${DOMAIN_NAME}\`)"
                   - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.entrypoints=websecure"
-                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.tls.certresolver=myresolver"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.tls.certresolver=letsencrypt"
                   - "traefik.http.services.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.loadbalancer.server.port=8000"
                 depends_on:
-                  - db
+                  db:
+                    condition: service_healthy
               bot:
                 image: ${REGISTRY_IMAGE}:${CI_COMMIT_SHA}
                 command: python -m server.telegram.bot
@@ -135,5 +141,8 @@ jobs:
             EOF
             
             echo "Starting deployment in ${DEPLOY_DIR}"
-            cd ${DEPLOY_DIR} && docker compose -f docker-compose.prod.yml up -d --pull always
+            cd ${DEPLOY_DIR}
+            docker compose -f docker-compose.prod.yml up -d --pull always
+            echo "Seeding database..."
+            docker compose -f docker-compose.prod.yml run --rm api python scripts/seed_db.py
             echo "Deployment successful"
