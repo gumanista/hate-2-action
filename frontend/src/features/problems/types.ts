@@ -10,3 +10,5 @@ export interface Problem {
   project?: Project;
   solutions?: Solution[];
 }
+export type ProblemCreate = Omit<Problem, 'problem_id' | 'created_at' | 'is_processed' | 'project' | 'solutions'>;
+export type ProblemUpdate = Partial<ProblemCreate>;
