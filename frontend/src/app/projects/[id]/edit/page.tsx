@@ -31,7 +31,7 @@ export default function EditProjectPage() {
         if (project) {
             setIsSubmitting(true);
             try {
-                await updateProject(project.id, values);
+                await updateProject(project.project_id, values);
                 router.push('/projects');
             } catch (error) {
                 console.error('Failed to update project', error);
