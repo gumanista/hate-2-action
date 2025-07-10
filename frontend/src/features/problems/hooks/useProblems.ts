@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Problem } from '@/types';
-import { getProblems } from '@/services/problems';
+import { Problem } from '@/features/problems/types';
+import { getProblems } from '@/features/problems/services/api';
 
 export const useProblems = () => {
   const [problems, setProblems] = useState<Problem[]>([]);

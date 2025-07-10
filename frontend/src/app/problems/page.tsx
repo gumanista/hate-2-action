@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useProblems } from '../../features/problems/useProblems';
+import { useProblems } from '@/features/problems/hooks/useProblems';
 import {
   Card,
   CardContent,
