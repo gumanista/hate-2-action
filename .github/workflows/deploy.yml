@@ -49,12 +49,21 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push Docker image
+      - name: Build and push backend Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
+          file: ./Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+
+      - name: Build and push frontend Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
 
   deploy:
     needs: build
@@ -74,11 +83,13 @@ jobs:
           script: |
             export CI_PROJECT_NAME=$(echo ${{ github.repository }} | awk -F / '{print $2}')
             export CI_COMMIT_SHA=${{ github.sha }}
-            export REGISTRY_IMAGE=ghcr.io/${{ github.repository }}
+            export BACKEND_IMAGE=ghcr.io/${{ github.repository }}/backend
+            export FRONTEND_IMAGE=ghcr.io/${{ github.repository }}/frontend
             export DEPLOYMENT_BASE="/home/deploy/${CI_PROJECT_NAME}"
             export ENVIRONMENT_SLUG="production"
             export DOMAIN_NAME=${{ secrets.DOMAIN_NAME }}
             export API_HOST="api.${DOMAIN_NAME}"
+            export FRONTEND_HOST="${DOMAIN_NAME}"
             export POSTGRES_USER=${{ secrets.POSTGRES_USER }}
             export POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             export POSTGRES_DB=${{ secrets.POSTGRES_DB }}
@@ -116,23 +127,38 @@ jobs:
                   timeout: 5s
                   retries: 5
               api:
-                image: ${REGISTRY_IMAGE}:${CI_COMMIT_SHA}
+                image: ${BACKEND_IMAGE}:${CI_COMMIT_SHA}
                 env_file: .env
                 networks:
                   - default
                 labels:
                   - "traefik.enable=true"
                   - "traefik.docker.network=traefik-public"
-                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.rule=Host(\`${API_HOST}\`)"
-                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.entrypoints=https"
-                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.tls=true"
-                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.tls.certresolver=letsencrypt"
-                  - "traefik.http.services.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.loadbalancer.server.port=8000"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}-api.rule=Host(\`${API_HOST}\`)"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}-api.entrypoints=https"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}-api.tls=true"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}-api.tls.certresolver=letsencrypt"
+                  - "traefik.http.services.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}-api.loadbalancer.server.port=8000"
                 depends_on:
                   db:
                     condition: service_healthy
+              frontend:
+                image: ${FRONTEND_IMAGE}:${CI_COMMIT_SHA}
+                env_file: .env
+                networks:
+                  - default
+                labels:
+                  - "traefik.enable=true"
+                  - "traefik.docker.network=traefik-public"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}-frontend.rule=Host(\`${FRONTEND_HOST}\`)"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}-frontend.entrypoints=https"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}-frontend.tls=true"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}-frontend.tls.certresolver=letsencrypt"
+                  - "traefik.http.services.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}-frontend.loadbalancer.server.port=3000"
+                depends_on:
+                  - api
               bot:
-                image: ${REGISTRY_IMAGE}:${CI_COMMIT_SHA}
+                image: ${BACKEND_IMAGE}:${CI_COMMIT_SHA}
                 command: python -m server.telegram.bot
                 env_file: .env
                 networks:

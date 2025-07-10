@@ -1,14 +1,25 @@
 # Hate-2-Action
 
-The API is available at `api.{domain_name}`.
+The API is available at `api.{domain_name}` and the frontend is available at `{domain_name}`.
 
 This project leverages machine learning to analyze user messages, detect social or psychological problems, and recommend relevant projects based on those problems. It uses embeddings to match problems to solutions and solutions to projects, ultimately generating a helpful and empathetic response.
+
+## Frontend
+
+The frontend is a Next.js application located in the `frontend` directory. To run it locally, you can use the following command:
+
+```bash
+docker-compose up --build
+```
+
+The frontend will be available at `http://localhost:3000`.
 
 ## Setup and Installation
 
 ### Prerequisites
 
 - Python 3.8 or higher
+- Node.js 18 or higher
 - SQLite database
 - OpenAI API Key (for LangChain integration)
 - Required Python libraries (specified in `requirements.txt`)

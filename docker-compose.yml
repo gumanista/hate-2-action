@@ -40,3 +40,17 @@ services:
       - .env
     depends_on:
       - api
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "3009:3000" # Change to 3009 to avoid conflict with local Next.js dev server
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - api
