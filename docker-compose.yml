@@ -46,6 +46,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: development
+    env_file:
+      - .env
     ports:
       - "3009:3000" # Change to 3009 to avoid conflict with local Next.js dev server
     volumes:

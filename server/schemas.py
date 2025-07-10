@@ -7,6 +7,7 @@ class Project(BaseModel):
     name: str
     description: Optional[str] = None
     created_at: Optional[str] = None
+    organization_id: Optional[int] = None
     website: Optional[str] = None
     contact_email: Optional[str] = None
 
@@ -76,6 +77,11 @@ class SolutionUpdate(BaseModel):
 class Organization(BaseModel):
     id: int
     name: str
+    description: Optional[str] = None
+    created_at: Optional[str] = None
+    website: Optional[str] = None
+    contact_email: Optional[str] = None
+    projects: Optional[List[Project]] = None
 
 
 class OrganizationCreate(BaseModel):

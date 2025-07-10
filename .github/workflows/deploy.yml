@@ -64,6 +64,9 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           tags: ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://api.${{ secrets.DOMAIN_NAME }}
+            NEXT_PUBLIC_API_KEY=${{ secrets.API_KEY }}
 
   deploy:
     needs: build
@@ -107,6 +110,8 @@ jobs:
             POSTGRES_HOST=db
             POSTGRES_PORT=5432
             API_KEY=${API_KEY}
+            NEXT_PUBLIC_API_URL=https://api.${DOMAIN_NAME}
+            NEXT_PUBLIC_API_KEY=${API_KEY}
             TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
             EOF
             
