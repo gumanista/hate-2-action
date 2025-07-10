@@ -24,11 +24,13 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Ensure trailing newline
+        run: find . -type f \( -name "*.py" -o -name "*.yml" -o -name "*.yaml" -o -name "*.md" -o -name "*.txt" -o -name ".gitignore" \) -exec sed -i -e '$a\' {} +
       - name: Run linter
         run: |
           pip install flake8
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=sqlite-vec,initial_data
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=sqlite-vec,initial_data
+          flake8 . --count --exit-zero --max-complexity=10 --statistics --exclude=sqlite-vec,initial_data
 
   build:
     needs: lint
@@ -86,15 +88,14 @@ jobs:
             mkdir -p ${DEPLOY_DIR}
             
             # Create .env file
-            cat << EOF > "${DEPLOY_DIR}/.env"
-            POSTGRES_USER=${POSTGRES_USER}
-            POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-            POSTGRES_DB=${POSTGRES_DB}
-            POSTGRES_HOST=db
-            POSTGRES_PORT=5432
-            API_KEY=${API_KEY}
-            TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-            EOF
+            touch "${DEPLOY_DIR}/.env"
+            echo "POSTGRES_USER=${POSTGRES_USER}" >> "${DEPLOY_DIR}/.env"
+            echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" >> "${DEPLOY_DIR}/.env"
+            echo "POSTGRES_DB=${POSTGRES_DB}" >> "${DEPLOY_DIR}/.env"
+            echo "POSTGRES_HOST=db" >> "${DEPLOY_DIR}/.env"
+            echo "POSTGRES_PORT=5432" >> "${DEPLOY_DIR}/.env"
+            echo "API_KEY=${API_KEY}" >> "${DEPLOY_DIR}/.env"
+            echo "TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}" >> "${DEPLOY_DIR}/.env"
             
             # Create docker-compose.prod.yml
             cat << EOF > "${DEPLOY_DIR}/docker-compose.prod.yml"
