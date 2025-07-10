@@ -14,6 +14,7 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         f"'@{ctx.bot.username} help'."
     )
 
+
 async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """
     1) Check that the bot was mentioned.
@@ -52,13 +53,14 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
         logger.exception(f"API request failed: {e.response.text}")
         await msg.reply_text("⚠️ Сталася помилка при обробці. Спробуйте пізніше.")
         return
-    except Exception as e:
+    except Exception:
         logger.exception("API call error")
         await msg.reply_text("⚠️ Сталася помилка при обробці. Спробуйте пізніше.")
         return
 
     # send the generated reply
     await msg.reply_text(reply_text)
+
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a telegram message to notify the developer."""

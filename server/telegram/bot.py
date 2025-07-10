@@ -33,5 +33,6 @@ def main() -> None:
     logger.info("Starting polling…")
     app.run_polling()
 
+
 if __name__ == "__main__":
     main()

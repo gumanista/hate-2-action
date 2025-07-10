@@ -15,6 +15,7 @@ def get_client():
         sys.exit(1)
     return httpx.Client(base_url=API_URL, headers={"X-API-Key": API_KEY})
 
+
 def handle_response(response: httpx.Response):
     if response.status_code >= 400:
         print(f"Error: {response.status_code} - {response.text}")
@@ -27,7 +28,9 @@ def handle_response(response: httpx.Response):
             else:
                 print(f"Status code: {response.status_code}")
 
+
 # --- Command Functions ---
+
 
 def cmd_process_message(client: httpx.Client, args):
     """Process a message through the API."""
@@ -35,7 +38,10 @@ def cmd_process_message(client: httpx.Client, args):
     response = client.post("/process-message", json={"message": args.text})
     handle_response(response)
 
+
 # --- CRUD for Projects ---
+
+
 def cmd_create_project(client: httpx.Client, args):
     data = {
         "name": args.name,
@@ -46,13 +52,16 @@ def cmd_create_project(client: httpx.Client, args):
     response = client.post("/projects", json=data)
     handle_response(response)
 
+
 def cmd_get_projects(client: httpx.Client, args):
     response = client.get("/projects")
     handle_response(response)
 
+
 def cmd_get_project(client: httpx.Client, args):
     response = client.get(f"/projects/{args.id}")
     handle_response(response)
+
 
 def cmd_update_project(client: httpx.Client, args):
     data = {}
@@ -64,7 +73,7 @@ def cmd_update_project(client: httpx.Client, args):
         data["website"] = args.website
     if args.contact_email:
         data["contact_email"] = args.contact_email
-    
+
     if not data:
         print("No fields to update.")
         return
@@ -72,23 +81,30 @@ def cmd_update_project(client: httpx.Client, args):
     response = client.put(f"/projects/{args.id}", json=data)
     handle_response(response)
 
+
 def cmd_delete_project(client: httpx.Client, args):
     response = client.delete(f"/projects/{args.id}")
     handle_response(response)
 
+
 # --- CRUD for Problems ---
+
+
 def cmd_create_problem(client: httpx.Client, args):
     data = {"name": args.name, "context": args.context}
     response = client.post("/problems", json=data)
     handle_response(response)
 
+
 def cmd_get_problems(client: httpx.Client, args):
     response = client.get("/problems")
     handle_response(response)
 
+
 def cmd_get_problem(client: httpx.Client, args):
     response = client.get(f"/problems/{args.id}")
     handle_response(response)
+
 
 def cmd_update_problem(client: httpx.Client, args):
     data = {}
@@ -98,31 +114,38 @@ def cmd_update_problem(client: httpx.Client, args):
         data["context"] = args.context
     if args.is_processed is not None:
         data["is_processed"] = args.is_processed
-    
+
     if not data:
         print("No fields to update.")
         return
-        
+
     response = client.put(f"/problems/{args.id}", json=data)
     handle_response(response)
+
 
 def cmd_delete_problem(client: httpx.Client, args):
     response = client.delete(f"/problems/{args.id}")
     handle_response(response)
 
+
 # --- CRUD for Solutions ---
+
+
 def cmd_create_solution(client: httpx.Client, args):
     data = {"name": args.name, "context": args.context}
     response = client.post("/solutions", json=data)
     handle_response(response)
 
+
 def cmd_get_solutions(client: httpx.Client, args):
     response = client.get("/solutions")
     handle_response(response)
 
+
 def cmd_get_solution(client: httpx.Client, args):
     response = client.get(f"/solutions/{args.id}")
     handle_response(response)
+
 
 def cmd_update_solution(client: httpx.Client, args):
     data = {}
@@ -130,13 +153,14 @@ def cmd_update_solution(client: httpx.Client, args):
         data["name"] = args.name
     if args.context:
         data["context"] = args.context
-        
+
     if not data:
         print("No fields to update.")
         return
 
     response = client.put(f"/solutions/{args.id}", json=data)
     handle_response(response)
+
 
 def cmd_delete_solution(client: httpx.Client, args):
     response = client.delete(f"/solutions/{args.id}")
@@ -155,7 +179,7 @@ def main():
     # --- Projects ---
     p_projects = subparsers.add_parser("projects", help="Manage projects.")
     sp_projects = p_projects.add_subparsers(dest="action", required=True)
-    
+
     p_create = sp_projects.add_parser("create", help="Create a project.")
     p_create.add_argument("name", help="Name of the project")
     p_create.add_argument("--description", help="Description of the project")
@@ -238,6 +262,7 @@ def main():
     args = parser.parse_args()
     with get_client() as client:
         args.func(client, args)
+
 
 if __name__ == "__main__":
     main()

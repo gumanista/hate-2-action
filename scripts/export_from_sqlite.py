@@ -11,9 +11,11 @@ class BytesEncoder(json.JSONEncoder):
                 return obj.hex()
         return super().default(obj)
 
+
 # Define the paths
 DB_PATH = 'donation.db'
 OUTPUT_DIR = 'initial_data'
+
 
 def export_tables_to_json():
     """
@@ -37,7 +39,7 @@ def export_tables_to_json():
         # Process each table
         for table_name_tuple in tables:
             table_name = table_name_tuple[0]
-            
+
             # Skip sqlite internal and vector tables
             if table_name.startswith('sqlite_') or table_name.startswith('vec_'):
                 continue
@@ -48,10 +50,10 @@ def export_tables_to_json():
                 # Fetch all data from the table
                 cursor.execute(f"SELECT * FROM {table_name}")
                 rows = cursor.fetchall()
-                
+
                 # Get column names
                 column_names = [description[0] for description in cursor.description]
-                
+
                 # Convert rows to a list of dictionaries
                 data = [dict(zip(column_names, row)) for row in rows]
 
@@ -73,6 +75,7 @@ def export_tables_to_json():
     finally:
         if conn:
             conn.close()
+
 
 if __name__ == '__main__':
     export_tables_to_json()

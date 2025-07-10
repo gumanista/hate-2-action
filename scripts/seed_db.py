@@ -28,6 +28,7 @@ def get_column_type(column_name, value):
         return "BOOLEAN"
     return "TEXT"
 
+
 def create_table_from_json(cursor, table_name, data):
     """Creates a table based on JSON data."""
     if not data:
@@ -39,7 +40,7 @@ def create_table_from_json(cursor, table_name, data):
 
     first_item = data[0]
     columns_with_types = []
-    
+
     column_names_for_insert = list(first_item.keys())
 
     pk_col = None
@@ -69,8 +70,9 @@ def create_table_from_json(cursor, table_name, data):
     create_table_sql = f"CREATE TABLE {table_name} ({', '.join(columns_with_types)});"
     print(f"Creating table {table_name}...")
     cursor.execute(create_table_sql)
-    
+
     return column_names_for_insert
+
 
 def insert_data(cursor, table_name, columns, data):
     """Inserts data into the specified table."""
@@ -83,7 +85,7 @@ def insert_data(cursor, table_name, columns, data):
     values = [[row.get(col) for col in columns] for row in data]
 
     print(f"Inserting {len(values)} records into {table_name}...")
-    
+
     # Use execute_values for efficient bulk insertion
     columns_formatted = ', '.join(f'"{col}"' for col in columns)
     insert_sql = f"INSERT INTO {table_name} ({columns_formatted}) VALUES %s"
@@ -108,7 +110,7 @@ def main():
         cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
         json_files = [f for f in os.listdir(DATA_DIR) if f.endswith(".json")]
-        
+
         for filename in sorted(json_files):
             table_name = os.path.splitext(filename)[0]
             file_path = os.path.join(DATA_DIR, filename)
@@ -143,6 +145,7 @@ def main():
         if conn:
             conn.close()
             print("Database connection closed.")
+
 
 if __name__ == "__main__":
     if not all([DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT]):

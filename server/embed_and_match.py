@@ -1,12 +1,11 @@
 from typing import List, Tuple
 from langchain_community.embeddings import OpenAIEmbeddings
 from server.database import Database
-
 def match_embeddings(
-    db: Database,
-    problem_ids: List[int],
-    k: int = 5,
-    k_proj: int = 3
+        db: Database,
+        problem_ids: List[int],
+        k: int = 5,
+        k_proj: int = 3
 ) -> Tuple[List[int], List[int]]:
     """
     1) Create vec_solutions / vec_projects / vec_problems (if missing).

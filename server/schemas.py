@@ -12,7 +12,7 @@ class Project(BaseModel):
 
     class Config:
         orm_mode = True
-        from_attributes=True
+        from_attributes = True
 
 
 class ProjectCreate(BaseModel):
@@ -38,7 +38,7 @@ class Problem(BaseModel):
 
     class Config:
         orm_mode = True
-        from_attributes=True
+        from_attributes = True
 
 
 class ProblemCreate(BaseModel):
@@ -60,7 +60,7 @@ class Solution(BaseModel):
 
     class Config:
         orm_mode = True
-        from_attributes=True
+        from_attributes = True
 
 
 class SolutionCreate(BaseModel):
@@ -73,16 +73,18 @@ class SolutionUpdate(BaseModel):
     context: Optional[str] = None
 
 
-
 class Organization(BaseModel):
     id: int
     name: str
 
+
 class OrganizationCreate(BaseModel):
     name: str
 
+
 class OrganizationUpdate(BaseModel):
     name: Optional[str] = None
+
 
 class ProcessMessageRequest(BaseModel):
     message: str

@@ -1,14 +1,14 @@
 import psycopg2
 import logging
-import json
 import os
 from typing import List, Tuple
-from typing import Any
+import psycopg2
 from langchain_community.embeddings import OpenAIEmbeddings
 
 logger = logging.getLogger(__name__)
 
 VECTOR_DIM = 1536
+
 
 class Database:
     def __init__(self):
@@ -107,13 +107,16 @@ class Database:
 
         if new_solution_ids:
             placeholders = ",".join("%s" for _ in new_solution_ids)
-            cur.execute(f"SELECT solution_id, context FROM solutions WHERE solution_id IN ({placeholders})", new_solution_ids)
+            cur.execute(f"SELECT solution_id, context FROM solutions WHERE solution_id IN ({placeholders})",
+                        new_solution_ids)
             rows_to_embed = cur.fetchall()
             for sid, context in rows_to_embed:
                 if not context:
                     continue
                 vec = embedder.embed_documents([context])[0]
-                cur.execute("INSERT INTO vec_solutions(solution_id, embedding) VALUES (%s, %s) ON CONFLICT (solution_id) DO UPDATE SET embedding = EXCLUDED.embedding;", (sid, vec))
+                cur.execute(
+                    "INSERT INTO vec_solutions(solution_id, embedding) VALUES (%s, %s) ON CONFLICT (solution_id) DO UPDATE SET embedding = EXCLUDED.embedding;",
+                    (sid, vec))
             self.conn.commit()
 
         # --- Projects ---
@@ -125,13 +128,16 @@ class Database:
 
         if new_project_ids:
             placeholders = ",".join("%s" for _ in new_project_ids)
-            cur.execute(f"SELECT project_id, description FROM projects WHERE project_id IN ({placeholders})", new_project_ids)
+            cur.execute(f"SELECT project_id, description FROM projects WHERE project_id IN ({placeholders})",
+                        new_project_ids)
             rows_to_embed = cur.fetchall()
             for pid, desc in rows_to_embed:
                 if not desc:
                     continue
                 vec = embedder.embed_documents([desc])[0]
-                cur.execute("INSERT INTO vec_projects(project_id, embedding) VALUES (%s, %s) ON CONFLICT (project_id) DO UPDATE SET embedding = EXCLUDED.embedding;", (pid, vec))
+                cur.execute(
+                    "INSERT INTO vec_projects(project_id, embedding) VALUES (%s, %s) ON CONFLICT (project_id) DO UPDATE SET embedding = EXCLUDED.embedding;",
+                    (pid, vec))
             self.conn.commit()
 
         return new_solution_ids, new_project_ids
@@ -163,7 +169,8 @@ class Database:
                 )
         self.conn.commit()
 
-    def embed_and_match_new_problems(self, embedder: OpenAIEmbeddings, problem_ids: List[int], k: int = 5) -> List[int]:
+    def embed_and_match_new_problems(self, embedder: OpenAIEmbeddings, problem_ids: List[int], k: int = 5) -> \
+            List[int]:
         cur = self.conn.cursor()
         matched_solution_ids = []
 
@@ -234,7 +241,6 @@ class Database:
 
         return [row[0] for row in rows]
 
-
     def get_problems_by_ids(self, problem_ids: List[int]) -> List[Tuple[str, str]]:
         if not problem_ids:
             return []
@@ -276,7 +282,8 @@ class Database:
         except psycopg2.Error as e:
             logger.error("DB insert failed: %s", e)
 
-    def create_project(self, name: str, description: str | None, website: str | None, contact_email: str | None) -> int | None:
+    def create_project(self, name: str, description: str | None, website: str | None,
+                       contact_email: str | None) -> int | None:
         try:
             cur = self.conn.cursor()
             cur.execute(
@@ -302,16 +309,19 @@ class Database:
     def get_project_by_id(self, project_id: int) -> Tuple[int, str, str, str, str, str] | None:
         try:
             cur = self.conn.cursor()
-            cur.execute("SELECT project_id, name, description, created_at, website, contact_email FROM projects WHERE project_id = %s", (project_id,))
+            cur.execute(
+                "SELECT project_id, name, description, created_at, website, contact_email FROM projects WHERE project_id = %s",
+                (project_id,))
             return cur.fetchone()
         except psycopg2.Error as e:
             logger.error("DB query failed: %s", e)
             return None
 
-    def update_project(self, project_id: int, name: str | None, description: str | None, website: str | None, contact_email: str | None) -> bool:
+    def update_project(self, project_id: int, name: str | None, description: str | None, website: str | None,
+                       contact_email: str | None) -> bool:
         try:
             cur = self.conn.cursor()
-            
+
             fields = []
             values = []
             if name is not None:
@@ -331,7 +341,7 @@ class Database:
                 return False
 
             values.append(project_id)
-            
+
             cur.execute(
                 f"UPDATE projects SET {', '.join(fields)} WHERE project_id = %s",
                 tuple(values)
@@ -378,13 +388,16 @@ class Database:
     def get_problem_by_id(self, problem_id: int) -> Tuple[int, str, str, str, bool] | None:
         try:
             cur = self.conn.cursor()
-            cur.execute("SELECT problem_id, name, context, created_at, is_processed FROM problems WHERE problem_id = %s", (problem_id,))
+            cur.execute(
+                "SELECT problem_id, name, context, created_at, is_processed FROM problems WHERE problem_id = %s",
+                (problem_id,))
             return cur.fetchone()
         except psycopg2.Error as e:
             logger.error("DB query failed: %s", e)
             return None
 
-    def update_problem(self, problem_id: int, name: str | None, context: str | None, is_processed: bool | None) -> bool:
+    def update_problem(self, problem_id: int, name: str | None, context: str | None,
+                       is_processed: bool | None) -> bool:
         try:
             cur = self.conn.cursor()
             fields = []
@@ -450,7 +463,8 @@ class Database:
     def get_solution_by_id(self, solution_id: int) -> Tuple[int, str, str, str] | None:
         try:
             cur = self.conn.cursor()
-            cur.execute("SELECT solution_id, name, context, created_at FROM solutions WHERE solution_id = %s", (solution_id,))
+            cur.execute("SELECT solution_id, name, context, created_at FROM solutions WHERE solution_id = %s",
+                        (solution_id,))
             return cur.fetchone()
         except psycopg2.Error as e:
             logger.error("DB query failed: %s", e)
@@ -492,6 +506,7 @@ class Database:
         except psycopg2.Error as e:
             logger.error("DB delete failed: %s", e)
             return False
+
     def create_organization(self, name: str) -> int | None:
         try:
             cur = self.conn.cursor()

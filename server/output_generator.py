@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple, Dict
+from typing import List, Dict
 
 from langchain_community.chat_models import ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage
@@ -8,7 +8,6 @@ from server.database import Database
 
 DEFAULT_TOP_N = 5
 MODEL_NAME = "gpt-4o-mini"
-
 
 ANSWER_STYLES: Dict[str, Dict[str, str]] = {
     "empathetic": {
@@ -32,12 +31,12 @@ Please write a response in ukrainian language that:
 
 
 def generate_output(
-    db: Database,
-    message_id: int,
-    problem_ids: List[int],
-    top_n: int = DEFAULT_TOP_N,
-    answer_style: str = "empathetic",
-    project_ids: List[int] = None
+        db: Database,
+        message_id: int,
+        problem_ids: List[int],
+        top_n: int = DEFAULT_TOP_N,
+        answer_style: str = "empathetic",
+        project_ids: List[int] = None
 ) -> str:
     """
     1) Fetch original message text from `messages`.

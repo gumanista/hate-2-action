@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from server.problem_detector import detect_problems
-from server.embed_and_match    import match_embeddings
-from server.output_generator   import generate_output
+from server.embed_and_match import match_embeddings
+from server.output_generator import generate_output
 
 from server.database import Database
 
