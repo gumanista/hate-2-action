@@ -1,5 +1,7 @@
 # Hate-2-Action
 
+The API is available at `api.{domain_name}`.
+
 This project leverages machine learning to analyze user messages, detect social or psychological problems, and recommend relevant projects based on those problems. It uses embeddings to match problems to solutions and solutions to projects, ultimately generating a helpful and empathetic response.
 
 ## Setup and Installation

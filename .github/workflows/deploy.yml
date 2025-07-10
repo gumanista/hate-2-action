@@ -122,8 +122,9 @@ jobs:
                 labels:
                   - "traefik.enable=true"
                   - "traefik.docker.network=traefik-public"
-                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.rule=Host(\`${DOMAIN_NAME}\`)"
-                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.entrypoints=websecure"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.rule=Host(`api.${DOMAIN_NAME}`)"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.entrypoints=https"
+                  - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.tls=true"
                   - "traefik.http.routers.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.tls.certresolver=letsencrypt"
                   - "traefik.http.services.${CI_PROJECT_NAME}-${ENVIRONMENT_SLUG}.loadbalancer.server.port=8000"
                 depends_on:
