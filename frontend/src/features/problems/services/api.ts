@@ -1,5 +1,6 @@
 import { getAuthHeaders } from '@/services/api';
-import { Problem, ProblemCreate, ProblemUpdate } from '@/types';
+import { Problem } from '@/features/problems/types';
+import { ProblemCreate, ProblemUpdate } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 

@@ -5,6 +5,7 @@ from langchain_openai import ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage
 
 from server.database import Database
+from server.schemas import Problem, Solution, Project
 
 DEFAULT_TOP_N = 5
 MODEL_NAME = "gpt-4o-mini"
@@ -126,9 +127,15 @@ def generate_output(
     # Insert reply into `responses`
     db.add_response(message_id, reply_text)
 
+    # Convert tuples to Pydantic models
+    problems = [Problem(problem_id=p[0], name=p[1], context=p[2]) for p in problems_data]
+    solutions = [Solution(solution_id=s[0], name=s[1], context=s[2]) for s in solutions_data]
+    projects = [Project(project_id=p[0], name=p[1], description=p[2], website=p[3], contact_email=p[4]) for p in
+                projects_data]
+
     return {
         "reply_text": reply_text,
-        "problems": problems_data,
-        "solutions": solutions_data,
-        "projects": projects_data,
+        "problems": problems,
+        "solutions": solutions,
+        "projects": projects,
     }

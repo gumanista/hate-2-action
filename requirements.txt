@@ -10,3 +10,4 @@ langchain
 langchain-core
 langchain-openai
 python-telegram-bot
+fastapi-cors
