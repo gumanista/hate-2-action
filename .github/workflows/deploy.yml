@@ -137,5 +137,5 @@ jobs:
             EOF
             
             echo "Starting deployment in ${DEPLOY_DIR}"
-            cd ${DEPLOY_DIR} && docker-compose -f docker-compose.prod.yml up -d --pull always
+            cd ${DEPLOY_DIR} && docker compose -f docker-compose.prod.yml up -d --pull always
             echo "Deployment successful"
