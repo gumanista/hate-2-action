@@ -96,11 +96,18 @@ class ProcessMessageRequest(BaseModel):
     message: str
 
 
-class ProcessMessageResponse(BaseModel):
-    reply_text: str
-    problems: list[Problem]
-    solutions: list[Solution]
-    projects: list[Project]
+class Response(BaseModel):
+    response_id: Optional[int] = None # Make optional for initial creation
+    message_id: Optional[int] = None # Make optional for initial creation
+    text: str
+    created_at: Optional[str] = None
+    problems: List[Problem] = []
+    solutions: List[Solution] = []
+    projects: List[Project] = []
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
 
 
 class Message(BaseModel):
@@ -109,6 +116,7 @@ class Message(BaseModel):
     user_username: str
     chat_title: Optional[str] = None
     text: str
+    response: Optional[Response] = None # Add optional response field
 
     class Config:
         orm_mode = True

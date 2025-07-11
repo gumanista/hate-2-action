@@ -44,12 +44,20 @@ class Database:
             logger.error("DB insert failed: %s", e)
             return None
 
-    def get_message_by_id(self, message_id: int) -> str | None:
+    def get_message_by_id(self, message_id: int) -> Tuple[int, int, str, str, str] | None:
         try:
             cur = self.conn.cursor()
-            cur.execute("SELECT text FROM messages WHERE message_id = %s", (message_id,))
-            row = cur.fetchone()
-            return row[0] if row else None
+            cur.execute("SELECT message_id, user_id, user_username, chat_title, text FROM messages WHERE message_id = %s", (message_id,))
+            return cur.fetchone()
+        except psycopg2.Error as e:
+            logger.error("DB query failed: %s", e)
+            return None
+
+    def get_response_by_message_id(self, message_id: int) -> Tuple[int, int, str, str] | None:
+        try:
+            cur = self.conn.cursor()
+            cur.execute("SELECT response_id, message_id, text, created_at FROM responses WHERE message_id = %s", (message_id,))
+            return cur.fetchone()
         except psycopg2.Error as e:
             logger.error("DB query failed: %s", e)
             return None

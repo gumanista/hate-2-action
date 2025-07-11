@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link"; // Import Link
 import { getMessages } from "../services/api";
 import { Message } from "../types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,15 +37,17 @@ export function MessageList() {
   return (
     <div className="space-y-4">
       {messages.map((message) => (
-        <Card key={message.message_id}>
-          <CardHeader>
-            <CardTitle>{message.chat_title || "Direct Message"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p><strong>From:</strong> @{message.user_username}</p>
-            <p>{message.text}</p>
-          </CardContent>
-        </Card>
+        <Link href={`/messages/${message.message_id}`} key={message.message_id}>
+          <Card className="cursor-pointer hover:bg-gray-100">
+            <CardHeader>
+              <CardTitle>{message.chat_title || "Direct Message"}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p><strong>From:</strong> @{message.user_username}</p>
+              <p>{message.text}</p>
+            </CardContent>
+          </Card>
+        </Link>
       ))}
     </div>
   );

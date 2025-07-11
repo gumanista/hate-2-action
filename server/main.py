@@ -5,21 +5,21 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from server.schemas import (
     ProcessMessageRequest,
-    ProcessMessageResponse,
     Message,
     Project, ProjectCreate, ProjectUpdate,
     Problem, ProblemCreate, ProblemUpdate,
     Solution, SolutionCreate, SolutionUpdate,
-    Organization, OrganizationCreate, OrganizationUpdate
+    Organization, OrganizationCreate, OrganizationUpdate,
+    Response # Import the unified Response schema
 )
 from server.pipeline import run as process_message_run
 from server.database import Database
 import logging
-from typing import List
+from typing import List, Optional
 from server.security import get_api_key
 
-app = FastAPI()
 
+app = FastAPI()
 origins = [
     "http://localhost:3000",
     "http://localhost:3009",
@@ -41,13 +41,11 @@ logger = logging.getLogger(__name__)
 @app.get("/")
 async def root(api_key: str = Depends(get_api_key)):
     return {"message": "API is running"}
-
-
-@app.post("/process-message", response_model=ProcessMessageResponse)
+@app.post("/process-message", response_model=Response) # Use the unified Response schema
 async def process_message(request: ProcessMessageRequest, api_key: str = Depends(get_api_key)):
     try:
         logger.info(f"Processing message: {request.message}")
-        result = process_message_run(request.message)
+        result = process_message_run(request.message) # This now returns the unified Response
         logger.info("Message processed successfully.")
         return result
     except Exception as e:
@@ -59,9 +57,65 @@ async def process_message(request: ProcessMessageRequest, api_key: str = Depends
 @app.get("/messages", response_model=List[Message])
 async def get_messages(api_key: str = Depends(get_api_key)):
     with Database() as db:
-        messages = db.get_messages()
-        return [Message(message_id=m[0], user_id=m[1], user_username=m[2], chat_title=m[3], text=m[4]) for m in messages]
+        messages_data = db.get_messages()
+        messages_with_responses = []
+        for m in messages_data:
+            message_id = m[0]
+            response_data = db.get_response_by_message_id(message_id)
+            response_obj = None
+            if response_data:
+                response_obj = Response(
+                    response_id=response_data[0],
+                    message_id=response_data[1],
+                    text=response_data[2],
+                    created_at=response_data[3],
+                    problems=[], # These fields are not available when fetching from responses table directly
+                    solutions=[],
+                    projects=[]
+                )
+            messages_with_responses.append(Message(
+                message_id=m[0],
+                user_id=m[1],
+                user_username=m[2],
+                chat_title=m[3],
+                text=m[4],
+                response=response_obj
+            ))
+        return messages_with_responses
 
+
+@app.get("/messages/{message_id}", response_model=Message)
+async def get_message(message_id: int, api_key: str = Depends(get_api_key)):
+    with Database() as db:
+        message = db.get_message_by_id(message_id)
+        if message is None:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        # Fetch response if it exists
+        response_data = db.get_response_by_message_id(message_id)
+        response_obj = None
+        if response_data:
+            # For a single message, we can try to fetch associated problems, solutions, projects
+            # This would require new database methods or a more complex query
+            # For now, we'll just populate the text and basic response info
+            response_obj = Response(
+                response_id=response_data[0],
+                message_id=response_data[1],
+                text=response_data[2],
+                created_at=response_data[3],
+                problems=[], # Placeholder
+                solutions=[], # Placeholder
+                projects=[] # Placeholder
+            )
+
+        return Message(
+            message_id=message[0],
+            user_id=message[1],
+            user_username=message[2],
+            chat_title=message[3],
+            text=message[4],
+            response=response_obj # Attach the response object
+        )
 
 # Projects
 @app.post("/projects", response_model=Project)

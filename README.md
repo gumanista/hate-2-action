@@ -14,6 +14,12 @@ docker-compose up --build
 
 The frontend will be available at `http://localhost:3000`.
 
+### Markdown Rendering for Message Replies
+The message reply section on the `process-message` page now supports Markdown rendering, allowing for richer text formatting in the displayed replies. This was implemented using `react-markdown` and `remark-gfm` for GitHub Flavored Markdown support.
+
+### Message Details Page
+A new page has been added at `app/messages/[id]/page.tsx` to display individual message details, including the original message and its associated reply. The reply text on this page also supports Markdown rendering for enhanced readability.
+
 ## Setup and Installation
 
 ### Prerequisites

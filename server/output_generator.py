@@ -39,7 +39,7 @@ def generate_output(
         project_ids: List[int],
         top_n: int = DEFAULT_TOP_N,
         answer_style: str = "empathetic"
-) -> dict:
+) -> dict: # This function will now return a dict that includes response_id and created_at
     """
     1) Fetch original message text from `messages`.
     2) Fetch detected problem names & contexts for each problem_id.
@@ -124,8 +124,14 @@ def generate_output(
     response = llm.invoke(messages)
     reply_text = response.content.strip()
 
-    # Insert reply into `responses`
-    db.add_response(message_id, reply_text)
+    # Insert reply into `responses` and get the response_id and created_at
+    response_data = db.add_response(message_id, reply_text)
+    if response_data is None:
+        print(f"Warning: Failed to add response for message_id {message_id}. Database error occurred or add_response returned None.")
+        response_id, created_at = None, None
+    else:
+        response_id = response_data[0]
+        created_at = response_data[3]
 
     # Convert tuples to Pydantic models
     problems = [Problem(problem_id=p[0], name=p[1], context=p[2]) for p in problems_data]
@@ -133,9 +139,14 @@ def generate_output(
     projects = [Project(project_id=p[0], name=p[1], description=p[2], website=p[3], contact_email=p[4]) for p in
                 projects_data]
 
-    return {
+    output_data = {
         "reply_text": reply_text,
         "problems": problems,
         "solutions": solutions,
         "projects": projects,
     }
+
+    output_data["response_id"] = response_id
+    output_data["created_at"] = created_at
+
+    return output_data

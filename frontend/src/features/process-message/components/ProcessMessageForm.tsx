@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { processMessage } from "../services/api";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
-import { ProcessMessageResponse } from "../types";
+import { Response } from "../../messages/types"; // Import the unified Response type
 
 export function ProcessMessageForm() {
   const [message, setMessage] = useState("");
-  const [result, setResult] = useState<ProcessMessageResponse | null>(null);
+  const [result, setResult] = useState<Response | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,7 +48,7 @@ export function ProcessMessageForm() {
       {result && (
         <div>
           <h3 className="text-lg font-semibold">Reply:</h3>
-          <p>{result.reply_text}</p>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.text}</ReactMarkdown>
 
           <h3 className="text-lg font-semibold mt-4">Recommended Problems:</h3>
           <ul>
