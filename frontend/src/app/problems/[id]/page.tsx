@@ -10,7 +10,6 @@ import Link from 'next/link';
 
 export default function ProblemDetailsPage() {
     const params = useParams();
-    const router = useRouter();
     const { id } = params;
     const [problem, setProblem] = useState<Problem | null>(null);
 
