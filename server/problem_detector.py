@@ -10,7 +10,7 @@ from langchain.schema import SystemMessage, HumanMessage, AIMessage
 
 from server.database import Database
 
-MODEL_NAME = "gpt-4.1-nano-2025-04-14"
+MODEL_NAME = "gpt-4.1-mini"
 MAX_RETRIES = 2
 REQUEST_DELAY_SECONDS = 1
 

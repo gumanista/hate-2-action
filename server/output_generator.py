@@ -8,7 +8,7 @@ from server.database import Database
 from server.schemas import Problem, Solution, Project
 
 DEFAULT_TOP_N = 5
-MODEL_NAME = "gpt-4o-mini"
+MODEL_NAME = "gpt-4.1-mini"
 
 ANSWER_STYLES: Dict[str, Dict[str, str]] = {
     "empathetic": {
