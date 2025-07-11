@@ -11,6 +11,7 @@ import Link from 'next/link';
 export default function ProblemDetailsPage() {
     const params = useParams();
     const { id } = params;
+    const router = useRouter();
     const [problem, setProblem] = useState<Problem | null>(null);
 
     useEffect(() => {
@@ -37,10 +38,8 @@ export default function ProblemDetailsPage() {
         <div className="container mx-auto py-10">
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-2xl font-bold">Problem Details</h1>
-                <Button asChild>
-                    <Link href={`/problems/${problem.problem_id}/edit`}>
-                        Edit Problem
-                    </Link>
+                <Button onClick={() => router.push(`/problems/${problem.problem_id}/edit`)}>
+                    Edit
                 </Button>
             </div>
             <ProblemItemFull problem={problem} />
