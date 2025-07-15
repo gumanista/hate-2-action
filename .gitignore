@@ -4,3 +4,7 @@ __pycache__/
 venv/
 .env
 donation.db
+INFO.md
+TODO-project.md
+TODO.md
+workflow.md

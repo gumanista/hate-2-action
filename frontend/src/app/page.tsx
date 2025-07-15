@@ -1,38 +1,18 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { HeroGrid } from "@/components/layout/hero-grid";
 
 export default function Home() {
   return (
-    <section className="container grid items-center gap-6 pb-8 pt-6 md:py-10">
-      <div className="flex max-w-[980px] flex-col items-start gap-2">
-        <h1 className="text-3xl font-extrabold leading-tight tracking-tighter sm:text-3xl md:text-5xl lg:text-6xl">
-          Hate to Action
-        </h1>
-        <p className="max-w-[700px] text-lg text-muted-foreground sm:text-xl">
-          A platform to connect people with social problems to projects that can solve them.
-        </p>
-      </div>
-      <div className="flex gap-4">
-        <Link
-          href="/projects"
-        >
-          <Button>View Projects</Button>
-        </Link>
-        <Link
-          href="/organizations"
-        >
-          <Button>View Organizations</Button>
-        </Link>
-        <Link
-          href="/problems"
-        >
-          <Button>View Problems</Button>
-        </Link>
-        <Link
-          href="/solutions"
-        >
-          <Button>View Solutions</Button>
-        </Link>
+    <section className="py-16">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-5xl font-extrabold mb-4">Hate to Action</h1>
+          <p className="text-lg text-gray-600">
+            This project, “Hate-2-Action,” is a sophisticated, full-stack application designed to analyze user messages, identify underlying social and psychological problems, and recommend relevant projects that can help address those issues. The system leverages a powerful combination of a machine learning pipeline, a modern web interface, and a Telegram bot to provide a seamless and intuitive user experience.
+          </p>
+        </div>
+        <div className="mt-12">
+          <HeroGrid />
+        </div>
       </div>
     </section>
   )

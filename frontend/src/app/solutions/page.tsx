@@ -2,6 +2,13 @@
 
 import Link from 'next/link';
 import { useSolutions } from '@/features/solutions/useSolutions';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 export default function SolutionsPage() {
@@ -16,22 +23,28 @@ export default function SolutionsPage() {
   }
 
   return (
-    <div className="container mx-auto py-10">
+    <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Solutions</h1>
         <Button asChild>
-          <Link href="/solutions/new">Create Solution</Link>
+          <Link href="/solutions/new">New Solution</Link>
         </Button>
       </div>
-      <ul>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {solutions.map((solution) => (
-          <li key={solution.solution_id}>
-            <Link href={`/solutions/${solution.solution_id}`}>
-              {solution.name}
-            </Link>
-          </li>
+          <Card key={solution.solution_id}>
+            <CardHeader>
+              <CardTitle>{solution.name}</CardTitle>
+              <CardDescription>{solution.context}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild>
+                <Link href={`/solutions/${solution.solution_id}`}>View</Link>
+              </Button>
+            </CardContent>
+          </Card>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
