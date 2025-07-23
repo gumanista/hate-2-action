@@ -10,7 +10,7 @@ export const OrganizationList: React.FC<OrganizationListProps> = ({ organization
   return (
     <div className="grid gap-4">
       {organizations.map((organization) => (
-        <OrganizationItem key={organization.id} organization={organization} />
+        <OrganizationItem key={organization.organization_id} organization={organization} />
       ))}
     </div>
   );

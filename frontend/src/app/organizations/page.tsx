@@ -32,14 +32,14 @@ export default function OrganizationsPage() {
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {organizations.map((organization) => (
-          <Card key={organization.id}>
+          <Card key={organization.organization_id}>
             <CardHeader>
               <CardTitle>{organization.name}</CardTitle>
               <CardDescription>{organization.description}</CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href={`/organizations/${organization.id}`}>View</Link>
+                <Link href={`/organizations/${organization.organization_id}`}>View</Link>
               </Button>
             </CardContent>
           </Card>

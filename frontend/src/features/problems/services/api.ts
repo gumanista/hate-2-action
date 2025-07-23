@@ -7,7 +7,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 export const getProblems = async (): Promise<Problem[]> => {
     const response = await fetch(`${API_URL}/problems`, { headers: getAuthHeaders() });
     if (!response.ok) {
-        throw new Error('Failed to fetch problems');
+        const text = await response.text();
+        console.error('[getProblems] failed:', response.status, response.statusText, text);
+        throw new Error(`Failed to fetch problems: ${response.status} ${response.statusText}`);
     }
     return response.json();
 };
@@ -21,25 +23,37 @@ export const getProblem = async (id: number): Promise<Problem> => {
 };
 
 export const createProblem = async (problem: ProblemCreate): Promise<Problem> => {
+    const headers = {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+    };
     const response = await fetch(`${API_URL}/problems`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers,
         body: JSON.stringify(problem),
     });
     if (!response.ok) {
-        throw new Error('Failed to create problem');
+        const text = await response.text();
+        console.error('[createProblem] failed:', response.status, response.statusText, text);
+        throw new Error(`Failed to create problem: ${response.status} ${response.statusText}`);
     }
     return response.json();
 };
 
 export const updateProblem = async (id: number, problem: ProblemUpdate): Promise<Problem> => {
+    const headers = {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+    };
     const response = await fetch(`${API_URL}/problems/${id}`, {
         method: 'PUT',
-        headers: getAuthHeaders(),
+        headers,
         body: JSON.stringify(problem),
     });
     if (!response.ok) {
-        throw new Error('Failed to update problem');
+        const text = await response.text();
+        console.error('[updateProblem] failed:', response.status, response.statusText, text);
+        throw new Error(`Failed to update problem: ${response.status} ${response.statusText}`);
     }
     return response.json();
 };

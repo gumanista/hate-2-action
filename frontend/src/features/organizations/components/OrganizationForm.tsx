@@ -19,6 +19,8 @@ import { Textarea } from '@/components/ui/textarea';
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string(),
+  website: z.string().url({ message: "Please enter a valid URL, including http:// or https://" }).optional().or(z.literal('')),
+  contact_email: z.string().email({ message: "Please enter a valid email address" }).optional().or(z.literal('')),
 });
 
 type OrganizationFormValues = z.infer<typeof formSchema>;
@@ -39,11 +41,19 @@ export function OrganizationForm({
     defaultValues: {
       name: organization?.name || '',
       description: organization?.description || '',
-    },
-  });
+      website: organization?.website || '',
+      contact_email: organization?.contact_email || '',
+  },
+});
 
   const handleSubmit = (values: OrganizationFormValues) => {
-    onSubmit(values);
+      const organizationData: OrganizationCreate = {
+          name: values.name,
+          description: values.description,
+          website: values.website,
+          contact_email: values.contact_email,
+      };
+      onSubmit(organizationData);
   };
 
   return (
@@ -75,10 +85,36 @@ export function OrganizationForm({
             </FormItem>
           )}
         />
+        <FormField
+          control={form.control}
+          name="website"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Website</FormLabel>
+              <FormControl>
+                <Input placeholder="Organization website" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+            control={form.control}
+            name="contact_email"
+            render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Contact Email</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Organization contact email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : 'Save'}
+            {isSubmitting ? 'Saving...' : 'Save'}
         </Button>
-      </form>
+        </form>
     </Form>
-  );
+    );
 }

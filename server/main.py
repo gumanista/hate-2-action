@@ -9,7 +9,7 @@ from server.schemas import (
     Project, ProjectCreate, ProjectUpdate,
     Problem, ProblemCreate, ProblemUpdate,
     Solution, SolutionCreate, SolutionUpdate,
-    Organization, OrganizationCreate, OrganizationUpdate,
+    Organization, OrganizationCreate, OrganizationUpdate, OrganizationFull,
     Response # Import the unified Response schema
 )
 from server.pipeline import run as process_message_run
@@ -270,39 +270,95 @@ async def delete_solution(solution_id: int, api_key: str = Depends(get_api_key))
 # Organizations
 @app.post("/organizations", response_model=Organization)
 async def create_organization(organization: OrganizationCreate, api_key: str = Depends(get_api_key)):
+    logger.info(f"Received organization data: {organization.dict()}")
     with Database() as db:
-        organization_id = db.create_organization(organization.name)
+        organization_id = db.create_organization(
+            organization.name,
+            organization.description,
+            organization.website,
+            organization.contact_email
+        )
         if organization_id is None:
             raise HTTPException(status_code=500, detail="Failed to create organization")
-        return Organization(id=organization_id, name=organization.name)
+        return Organization(organization_id=organization_id, name=organization.name, description=organization.description, website=organization.website, contact_email=organization.contact_email)
 
 
 @app.get("/organizations", response_model=List[Organization])
 async def get_organizations(api_key: str = Depends(get_api_key)):
     with Database() as db:
         organizations = db.get_organizations()
-        return [Organization(id=o[0], name=o[1]) for o in organizations]
+        return [Organization(organization_id=o[0], name=o[1], description=o[2], website=o[3], contact_email=o[4]) for o in organizations]
 
 
-@app.get("/organizations/{organization_id}", response_model=Organization)
+@app.get("/organizations/{organization_id}", response_model=OrganizationFull)
 async def get_organization(organization_id: int, api_key: str = Depends(get_api_key)):
     with Database() as db:
-        organization = db.get_organization_by_id(organization_id)
-        if organization is None:
+        organization_data = db.get_organization_by_id(organization_id)
+        if organization_data is None:
             raise HTTPException(status_code=404, detail="Organization not found")
-        return Organization(id=organization[0], name=organization[1])
 
+        projects_data = db.get_projects_by_organization(organization_id)
+        
+        # Create a dictionary from the organization data tuple
+        organization_dict = {
+            "organization_id": organization_data[0],
+            "name": organization_data[1],
+            "description": organization_data[2],
+            "website": organization_data[3],
+            "contact_email": organization_data[4]
+        }
+
+        # Create Project objects from the projects data
+        projects = [
+            Project(
+                project_id=p[0],
+                name=p[1],
+                description=p[2],
+                created_at=p[3],
+                website=p[4],
+                contact_email=p[5],
+                organization_id=p[6]
+            ) for p in projects_data
+        ]
+
+        # Combine them into the OrganizationFull model
+        organization_full = OrganizationFull(**organization_dict, projects=projects)
+        return organization_full
+
+@app.get("/organizations/{organization_id}/projects", response_model=List[Project])
+async def get_projects_by_organization(organization_id: int, api_key: str = Depends(get_api_key)):
+    with Database() as db:
+        projects = db.get_projects_by_organization(organization_id)
+        if projects is None:
+            raise HTTPException(status_code=404, detail="No projects found for this organization")
+        return [Project(project_id=p[0], name=p[1], description=p[2], created_at=p[3], website=p[4],
+                        contact_email=p[5]) for p in projects]
 
 @app.put("/organizations/{organization_id}", response_model=Organization)
 async def update_organization(organization_id: int, organization: OrganizationUpdate,
                               api_key: str = Depends(get_api_key)):
     with Database() as db:
-        if organization.name is None:
-            raise HTTPException(status_code=400, detail="Name is required for update")
-        success = db.update_organization(organization_id, organization.name)
+        success = db.update_organization(
+            organization_id,
+            organization.name,
+            organization.description,
+            organization.website,
+            organization.contact_email
+        )
         if not success:
             raise HTTPException(status_code=404, detail="Organization not found")
-        return Organization(id=organization_id, name=organization.name)
+
+        updated_organization = db.get_organization_by_id(organization_id)
+        if updated_organization is None:
+            raise HTTPException(status_code=404, detail="Organization not found after update")
+
+        return Organization(
+            organization_id=updated_organization[0],
+            name=updated_organization[1],
+            description=updated_organization[2],
+            website=updated_organization[3],
+            contact_email=updated_organization[4]
+        )
 
 
 @app.delete("/organizations/{organization_id}", status_code=204)

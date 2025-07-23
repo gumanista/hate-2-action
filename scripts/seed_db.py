@@ -68,7 +68,7 @@ def create_table_from_json(cursor, table_name, data):
             columns_with_types.append(f'"{key}" {col_type}')
 
     create_table_sql = f"CREATE TABLE {table_name} ({', '.join(columns_with_types)});"
-    print(f"Creating table {table_name}...")
+    print(f"Creating table {table_name} with SQL: {create_table_sql}")
     cursor.execute(create_table_sql)
 
     return column_names_for_insert, pk_col
@@ -111,8 +111,12 @@ def main():
 
         json_files = [f for f in os.listdir(DATA_DIR) if f.endswith(".json")]
 
+        # Prioritize organizations.json to ensure it's created first
+        if 'organizations.json' in json_files:
+            json_files.insert(0, json_files.pop(json_files.index('organizations.json')))
+
         seeded_tables = []
-        for filename in sorted(json_files):
+        for filename in json_files:
             if filename.startswith("vec_"):
                 print(f"Skipping vector file: {filename}")
                 continue
