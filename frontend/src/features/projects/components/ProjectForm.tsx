@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Organization } from '@/features/organizations/types';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -26,12 +28,14 @@ type ProjectFormValues = z.infer<typeof formSchema>;
 
 interface ProjectFormProps {
   project?: Project;
+  organizations: Organization[];
   onSubmit: (values: ProjectCreate | ProjectUpdate) => void;
   isSubmitting: boolean;
 }
 
 export function ProjectForm({
   project,
+  organizations,
   onSubmit,
   isSubmitting,
 }: ProjectFormProps) {
@@ -82,16 +86,21 @@ export function ProjectForm({
           name="organization_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Organization ID</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  placeholder="Organization ID"
-                  {...field}
-                  value={field.value === null ? '' : String(field.value)}
-                  onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
-                />
-              </FormControl>
+              <FormLabel>Organization</FormLabel>
+              <Select onValueChange={(value: string) => field.onChange(Number(value))} defaultValue={String(field.value)}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an organization" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {organizations.map((org) => (
+                    <SelectItem key={org.organization_id} value={String(org.organization_id)}>
+                      {org.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}

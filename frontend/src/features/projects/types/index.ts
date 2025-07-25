@@ -12,6 +12,8 @@ export interface ProjectCreate {
     name: string;
     description: string;
     organization_id: number | null;
+    website: string | null;
+    contact_email: string | null;
 }
 
 export interface ProjectUpdate {

@@ -21,6 +21,7 @@ class ProjectCreate(BaseModel):
     description: Optional[str] = None
     website: Optional[str] = None
     contact_email: Optional[str] = None
+    organization_id: Optional[int] = None
 
 
 class ProjectUpdate(BaseModel):

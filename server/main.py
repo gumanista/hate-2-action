@@ -121,11 +121,23 @@ async def get_message(message_id: int, api_key: str = Depends(get_api_key)):
 @app.post("/projects", response_model=Project)
 async def create_project(project: ProjectCreate, api_key: str = Depends(get_api_key)):
     with Database() as db:
-        project_id = db.create_project(project.name, project.description, project.website, project.contact_email)
+        project_id = db.create_project(
+            project.name,
+            project.description,
+            project.website,
+            project.contact_email,
+            project.organization_id
+        )
         if project_id is None:
             raise HTTPException(status_code=500, detail="Failed to create project")
-        return Project(project_id=project_id, name=project.name, description=project.description,
-                       website=project.website, contact_email=project.contact_email)
+        return Project(
+            project_id=project_id,
+            name=project.name,
+            description=project.description,
+            website=project.website,
+            contact_email=project.contact_email,
+            organization_id=project.organization_id
+        )
 
 
 @app.get("/projects", response_model=List[Project])

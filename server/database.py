@@ -333,12 +333,12 @@ class Database:
             logger.error("DB insert failed: %s", e)
 
     def create_project(self, name: str, description: str | None, website: str | None,
-                       contact_email: str | None) -> int | None:
+                       contact_email: str | None, organization_id: int | None) -> int | None:
         try:
             cur = self.conn.cursor()
             cur.execute(
-                "INSERT INTO projects (name, description, website, contact_email) VALUES (%s, %s, %s, %s) RETURNING project_id",
-                (name, description, website, contact_email)
+                "INSERT INTO projects (name, description, website, contact_email, organization_id) VALUES (%s, %s, %s, %s, %s) RETURNING project_id",
+                (name, description, website, contact_email, organization_id)
             )
             project_id = cur.fetchone()[0]
             self.conn.commit()
@@ -630,10 +630,10 @@ class Database:
         except psycopg2.Error as e:
             logger.error("DB delete failed: %s", e)
             return False
-    def get_projects_by_organization(self, organization_id: int) -> List[Tuple[int, str, str, str, str, str]]:
+    def get_projects_by_organization(self, organization_id: int) -> List[Tuple[int, str, str, str, str, str, int]]:
         try:
             cur = self.conn.cursor()
-            cur.execute("SELECT project_id, name, description, created_at, website, contact_email FROM projects WHERE organization_id = %s", (organization_id,))
+            cur.execute("SELECT project_id, name, description, created_at, website, contact_email, organization_id FROM projects WHERE organization_id = %s", (organization_id,))
             return cur.fetchall()
         except psycopg2.Error as e:
             logger.error("DB query failed: %s", e)
