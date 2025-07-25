@@ -14,10 +14,12 @@ export interface OrganizationCreate {
     description: string;
     website?: string;
     contact_email?: string;
+    project_ids?: number[];
 }
 
 export interface OrganizationUpdate {
     name?: string;
     description?: string;
     website?: string;
+    project_ids?: number[];
 }

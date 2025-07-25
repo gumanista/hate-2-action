@@ -557,7 +557,8 @@ class Database:
             logger.error("DB delete failed: %s", e)
             return False
 
-    def create_organization(self, name: str, description: str | None, website: str | None, contact_email: str | None) -> int | None:
+    def create_organization(self, name: str, description: str | None, website: str | None, contact_email: str | None, project_ids: List[int] | None) -> int | None:
+        logger.info(f"Creating organization with name: {name}, description: {description}, website: {website}, contact_email: {contact_email}, project_ids: {project_ids}")
         try:
             cur = self.conn.cursor()
             cur.execute(
@@ -565,6 +566,15 @@ class Database:
                 (name, description, website, contact_email)
             )
             organization_id = cur.fetchone()[0]
+
+            if project_ids:
+                # Associate projects with the new organization
+                for project_id in project_ids:
+                    cur.execute(
+                        "UPDATE projects SET organization_id = %s WHERE project_id = %s",
+                        (organization_id, project_id)
+                    )
+
             self.conn.commit()
             return organization_id
         except psycopg2.Error as e:
@@ -591,7 +601,7 @@ class Database:
             logger.error("DB query failed: %s", e)
             return None
 
-    def update_organization(self, organization_id: int, name: str | None, description: str | None, website: str | None, contact_email: str | None) -> bool:
+    def update_organization(self, organization_id: int, name: str | None, description: str | None, website: str | None, contact_email: str | None, project_ids: List[int] | None) -> bool:
         try:
             cur = self.conn.cursor()
             fields = []
@@ -608,15 +618,23 @@ class Database:
             if contact_email is not None:
                 fields.append("contact_email = %s")
                 values.append(contact_email)
-            if not fields:
-                return False
-            values.append(organization_id)
-            cur.execute(
-                f"UPDATE organizations SET {', '.join(fields)} WHERE organization_id = %s",
-                tuple(values)
-            )
+
+            if fields:
+                values.append(organization_id)
+                cur.execute(
+                    f"UPDATE organizations SET {', '.join(fields)} WHERE organization_id = %s",
+                    tuple(values)
+                )
+
+            if project_ids is not None:
+                # First, remove existing associations for this organization
+                cur.execute("UPDATE projects SET organization_id = NULL WHERE organization_id = %s", (organization_id,))
+                # Then, add the new associations
+                for project_id in project_ids:
+                    cur.execute("UPDATE projects SET organization_id = %s WHERE project_id = %s", (organization_id, project_id))
+
             self.conn.commit()
-            return cur.rowcount > 0
+            return True
         except psycopg2.Error as e:
             logger.error("DB update failed: %s", e)
             return False

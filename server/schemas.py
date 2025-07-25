@@ -92,6 +92,7 @@ class OrganizationCreate(BaseModel):
     description: Optional[str] = None
     website: Optional[str] = None
     contact_email: Optional[str] = None
+    project_ids: Optional[List[int]] = None
 
 
 class OrganizationUpdate(BaseModel):
@@ -99,6 +100,7 @@ class OrganizationUpdate(BaseModel):
     description: Optional[str] = None
     website: Optional[str] = None
     contact_email: Optional[str] = None
+    project_ids: Optional[List[int]] = None
 
 
 class ProcessMessageRequest(BaseModel):

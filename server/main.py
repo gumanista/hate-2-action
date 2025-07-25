@@ -280,19 +280,46 @@ async def delete_solution(solution_id: int, api_key: str = Depends(get_api_key))
 
 
 # Organizations
-@app.post("/organizations", response_model=Organization)
+@app.post("/organizations", response_model=OrganizationFull)
 async def create_organization(organization: OrganizationCreate, api_key: str = Depends(get_api_key)):
     logger.info(f"Received organization data: {organization.dict()}")
     with Database() as db:
+        logger.info("Creating organization in the database...")
         organization_id = db.create_organization(
             organization.name,
             organization.description,
             organization.website,
-            organization.contact_email
+            organization.contact_email,
+            organization.project_ids
         )
+        logger.info(f"Organization created with ID: {organization_id}")
+
         if organization_id is None:
+            logger.error("Failed to create organization in the database.")
             raise HTTPException(status_code=500, detail="Failed to create organization")
-        return Organization(organization_id=organization_id, name=organization.name, description=organization.description, website=organization.website, contact_email=organization.contact_email)
+
+        logger.info(f"Fetching newly created organization with ID: {organization_id}")
+        new_organization_data = db.get_organization_by_id(organization_id)
+        if new_organization_data is None:
+            logger.error(f"Could not retrieve newly created organization with ID: {organization_id}")
+            raise HTTPException(status_code=404, detail="Could not retrieve newly created organization")
+        logger.info(f"Successfully fetched new organization data: {new_organization_data}")
+
+        logger.info(f"Fetching associated projects for organization ID: {organization_id}")
+        projects_data = db.get_projects_by_organization(organization_id)
+        projects = [Project(project_id=p[0], name=p[1], description=p[2], created_at=p[3], website=p[4], contact_email=p[5], organization_id=p[6]) for p in projects_data]
+        logger.info(f"Successfully fetched associated projects: {projects}")
+
+        organization_response = OrganizationFull(
+            organization_id=new_organization_data[0],
+            name=new_organization_data[1],
+            description=new_organization_data[2],
+            website=new_organization_data[3],
+            contact_email=new_organization_data[4],
+            projects=projects
+        )
+        logger.info(f"Constructed organization response: {organization_response.dict()}")
+        return organization_response
 
 
 @app.get("/organizations", response_model=List[Organization])
@@ -346,7 +373,7 @@ async def get_projects_by_organization(organization_id: int, api_key: str = Depe
         return [Project(project_id=p[0], name=p[1], description=p[2], created_at=p[3], website=p[4],
                         contact_email=p[5]) for p in projects]
 
-@app.put("/organizations/{organization_id}", response_model=Organization)
+@app.put("/organizations/{organization_id}", response_model=OrganizationFull)
 async def update_organization(organization_id: int, organization: OrganizationUpdate,
                               api_key: str = Depends(get_api_key)):
     with Database() as db:
@@ -355,22 +382,28 @@ async def update_organization(organization_id: int, organization: OrganizationUp
             organization.name,
             organization.description,
             organization.website,
-            organization.contact_email
+            organization.contact_email,
+            organization.project_ids
         )
         if not success:
-            raise HTTPException(status_code=404, detail="Organization not found")
+            raise HTTPException(status_code=404, detail="Organization not found or update failed")
 
         updated_organization = db.get_organization_by_id(organization_id)
         if updated_organization is None:
             raise HTTPException(status_code=404, detail="Organization not found after update")
 
-        return Organization(
+        projects_data = db.get_projects_by_organization(organization_id)
+        projects = [Project(project_id=p[0], name=p[1], description=p[2], created_at=p[3], website=p[4], contact_email=p[5], organization_id=p[6]) for p in projects_data]
+
+        organization_response = OrganizationFull(
             organization_id=updated_organization[0],
             name=updated_organization[1],
             description=updated_organization[2],
             website=updated_organization[3],
-            contact_email=updated_organization[4]
+            contact_email=updated_organization[4],
+            projects=projects
         )
+        return organization_response
 
 
 @app.delete("/organizations/{organization_id}", status_code=204)
