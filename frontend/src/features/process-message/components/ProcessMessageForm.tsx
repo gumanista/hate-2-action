@@ -14,6 +14,7 @@ export function ProcessMessageForm() {
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<Response | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [responseStyle, setResponseStyle] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +22,7 @@ export function ProcessMessageForm() {
     setResult(null);
 
     try {
-      const data = await processMessage({ message });
+      const data = await processMessage({ message, response_style: responseStyle });
       setResult(data);
       toast.success("Message processed successfully.");
     } catch (error) {
@@ -41,7 +42,25 @@ export function ProcessMessageForm() {
           onChange={(e) => setMessage(e.target.value)}
           rows={6}
         />
-        <Button type="submit" disabled={isLoading}>
+        <div>
+          <label htmlFor="response-style" className="block text-sm font-medium text-gray-700">
+            Response Style
+          </label>
+          <select
+            id="response-style"
+            value={responseStyle}
+            onChange={(e) => setResponseStyle(e.target.value)}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          >
+            <option value="" disabled>
+              Select a style
+            </option>
+            <option value="empathetic">Empathetic</option>
+            <option value="rude">Rude</option>
+            <option value="formal">Formal</option>
+          </select>
+        </div>
+        <Button type="submit" disabled={isLoading || !responseStyle}>
           {isLoading ? "Processing..." : "Process Message"}
         </Button>
       </form>

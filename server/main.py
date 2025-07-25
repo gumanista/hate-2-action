@@ -45,7 +45,7 @@ async def root(api_key: str = Depends(get_api_key)):
 async def process_message(request: ProcessMessageRequest, api_key: str = Depends(get_api_key)):
     try:
         logger.info(f"Processing message: {request.message}")
-        result = process_message_run(request.message) # This now returns the unified Response
+        result = process_message_run(request.message, request.response_style) # This now returns the unified Response
         logger.info("Message processed successfully.")
         return result
     except Exception as e:

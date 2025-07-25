@@ -103,6 +103,7 @@ class OrganizationUpdate(BaseModel):
 
 class ProcessMessageRequest(BaseModel):
     message: str
+    response_style: str
 
 
 class Response(BaseModel):
