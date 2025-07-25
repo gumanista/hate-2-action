@@ -39,8 +39,8 @@ export default function NewProjectPage() {
     };
 
     return (
-        <div>
-            <h1>Create Project</h1>
+        <div className="p-4 sm:p-6 md:p-8">
+            <h1 className="text-2xl font-bold mb-4">Create Project</h1>
             <ProjectForm
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}

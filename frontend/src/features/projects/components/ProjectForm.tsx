@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Organization } from '@/features/organizations/types';
 
 const formSchema = z.object({
@@ -60,7 +60,7 @@ export function ProjectForm({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>Name<span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input placeholder="Project name" {...field} />
               </FormControl>
@@ -87,20 +87,18 @@ export function ProjectForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Organization</FormLabel>
-              <Select onValueChange={(value: string) => field.onChange(Number(value))} defaultValue={String(field.value)}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an organization" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {organizations.map((org) => (
-                    <SelectItem key={org.organization_id} value={String(org.organization_id)}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <SearchableSelect
+                  {...field}
+                  options={organizations.map((org) => ({
+                    value: org.organization_id,
+                    label: org.name,
+                  }))}
+                  onChange={(value) => field.onChange(value)}
+                  value={field.value}
+                  placeholder="Select an organization"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
