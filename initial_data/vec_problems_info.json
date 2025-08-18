@@ -1,0 +1,18 @@
+[
+    {
+        "key": "CREATE_VERSION",
+        "value": "v0.1.6"
+    },
+    {
+        "key": "CREATE_VERSION_MAJOR",
+        "value": 0
+    },
+    {
+        "key": "CREATE_VERSION_MINOR",
+        "value": 1
+    },
+    {
+        "key": "CREATE_VERSION_PATCH",
+        "value": 6
+    }
+]

@@ -34,7 +34,8 @@ services:
       - ./scripts:/app/scripts
       - ./server:/app/server
     depends_on:
-      - db-seed
+      db-seed:
+        condition: service_completed_successfully
 
   bot:
     build: .

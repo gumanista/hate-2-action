@@ -1,9 +1,22 @@
+# DB volumes
+.data/
+*.db
+*.sqlite
+
+# Node/Next build artifacts
+node_modules/
+frontend/.next/
+
+# Python caches
 __pycache__/
 *.pyc
-.data
+
+# Git & env
+.git/
 venv/
 .env
-donation.db
+.env.*
+
 INFO.md
 TODO-project.md
 TODO.md

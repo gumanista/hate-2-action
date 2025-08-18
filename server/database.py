@@ -310,11 +310,15 @@ class Database:
         try:
             cur = self.conn.cursor()
             selected_ids = project_ids[:top_n]
+            logger.debug(f"Fetching projects with IDs: {selected_ids}")
             placeholders = ",".join("%s" for _ in selected_ids)
             query = (
-                f"SELECT project_id, name, description, website, contact_email "
-                f"FROM projects WHERE project_id IN ({placeholders})"
+                "SELECT p.project_id, p.name, p.description, o.website, o.contact_email "
+                "FROM projects p "
+                "LEFT JOIN organizations o ON p.organization_id = o.organization_id "
+                f"WHERE p.project_id IN ({placeholders})"
             )
+            logger.debug(f"Executing query: {query}")
             cur.execute(query, tuple(selected_ids))
             return cur.fetchall()
         except psycopg2.Error as e:

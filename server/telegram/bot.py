@@ -17,6 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def main() -> None:
+    logger.info("Initializing bot...")
     token = Config.TELEGRAM_BOT_TOKEN
     if not token:
         logger.error("TELEGRAM_BOT_TOKEN environment variable not set")
