@@ -68,7 +68,7 @@ def create_table_from_json(cursor, table_name, data):
             columns_with_types.append(f'"{key}" {col_type}')
 
     create_table_sql = f"CREATE TABLE {table_name} ({', '.join(columns_with_types)});"
-    print(f"Creating table {table_name}...")
+    print(f"Creating table {table_name} with SQL: {create_table_sql}")
     cursor.execute(create_table_sql)
 
     return column_names_for_insert, pk_col
@@ -92,6 +92,28 @@ def insert_data(cursor, table_name, columns, data):
     execute_values(cursor, insert_sql, values)
 
 
+def create_vec_tables(cursor):
+    """Creates the vector tables if they don't exist."""
+    print("Creating vector tables...")
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS vec_solutions (
+        id SERIAL PRIMARY KEY,
+        solution_id INTEGER,
+        embedding vector(1536),
+        FOREIGN KEY (solution_id) REFERENCES solutions(solution_id)
+    );
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS vec_problems (
+        id SERIAL PRIMARY KEY,
+        problem_id INTEGER,
+        embedding vector(1536),
+        FOREIGN KEY (problem_id) REFERENCES problems(problem_id)
+    );
+    """)
+    print("Vector tables created successfully.")
+
+
 def main():
     """Main function to seed the database."""
     conn = None
@@ -109,13 +131,16 @@ def main():
         print("Ensuring pgvector extension is enabled...")
         cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
+        create_vec_tables(cursor)
+
         json_files = [f for f in os.listdir(DATA_DIR) if f.endswith(".json")]
 
+        # Prioritize organizations.json to ensure it's created first
+        if 'organizations.json' in json_files:
+            json_files.insert(0, json_files.pop(json_files.index('organizations.json')))
+
         seeded_tables = []
-        for filename in sorted(json_files):
-            if filename.startswith("vec_"):
-                print(f"Skipping vector file: {filename}")
-                continue
+        for filename in json_files:
             table_name = os.path.splitext(filename)[0]
             file_path = os.path.join(DATA_DIR, filename)
 
@@ -139,6 +164,10 @@ def main():
                     seeded_tables.append({'table': table_name, 'pk': pk_col})
 
         conn.commit()
+
+        print("Altering table projects to add website column...")
+        cursor.execute("ALTER TABLE projects ADD COLUMN website TEXT;")
+
         print("\nDatabase seeding completed successfully.")
 
         print("Resetting sequence counters...")

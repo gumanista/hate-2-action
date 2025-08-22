@@ -1,6 +1,6 @@
 import { Project } from "../../projects/types";
 export interface Organization {
-    id: number;
+    organization_id: number;
     name: string;
     description: string | null;
     created_at: string | null;
@@ -12,9 +12,14 @@ export interface Organization {
 export interface OrganizationCreate {
     name: string;
     description: string;
+    website?: string;
+    contact_email?: string;
+    project_ids?: number[];
 }
 
 export interface OrganizationUpdate {
     name?: string;
     description?: string;
+    website?: string;
+    project_ids?: number[];
 }

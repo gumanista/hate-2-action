@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Organization } from '@/features/organizations/types';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -26,12 +28,14 @@ type ProjectFormValues = z.infer<typeof formSchema>;
 
 interface ProjectFormProps {
   project?: Project;
+  organizations: Organization[];
   onSubmit: (values: ProjectCreate | ProjectUpdate) => void;
   isSubmitting: boolean;
 }
 
 export function ProjectForm({
   project,
+  organizations,
   onSubmit,
   isSubmitting,
 }: ProjectFormProps) {
@@ -56,7 +60,7 @@ export function ProjectForm({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>Name<span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input placeholder="Project name" {...field} />
               </FormControl>
@@ -82,14 +86,17 @@ export function ProjectForm({
           name="organization_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Organization ID</FormLabel>
+              <FormLabel>Organization</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  placeholder="Organization ID"
+                <SearchableSelect
                   {...field}
-                  value={field.value === null ? '' : String(field.value)}
-                  onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                  options={organizations.map((org) => ({
+                    value: org.organization_id,
+                    label: org.name,
+                  }))}
+                  onChange={(value) => field.onChange(value)}
+                  value={field.value}
+                  placeholder="Select an organization"
                 />
               </FormControl>
               <FormMessage />

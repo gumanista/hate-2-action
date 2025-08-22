@@ -5,7 +5,13 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from .config import Config
 
+
 logger = logging.getLogger(__name__)
+
+
+# The available response styles.
+RESPONSE_STYLES = ["empathetic", "rude", "formal"]
+
 
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """Reply with a hello and instructions."""
@@ -36,10 +42,22 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     # strip all @mentions (including ours) and normalize
     cleaned = re.sub(r"@\w+", "", text).strip()
 
+    # determine response style
+    response_style = "empathetic"  # default
+    words = cleaned.lower().split()
+    if words and words[0] in RESPONSE_STYLES:
+        response_style = words[0]
+        cleaned = " ".join(words[1:])
+
     # call the API
     try:
+        if not Config.API_KEY:
+            logger.error("API_KEY not configured")
+            await msg.reply_text("⚠️ API-ключ не налаштовано. Будь ласка, зверніться до адміністратора.")
+            return
+
         headers = {"X-API-Key": Config.API_KEY}
-        payload = {"text": cleaned}
+        payload = {"message": cleaned, "response_style": response_style}
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{Config.API_URL}/process-message",

@@ -7,7 +7,7 @@ from server.schemas import Response, Problem, Solution, Project # Import Respons
 from server.database import Database
 
 
-def run(message: str) -> Response: # Change return type to Response
+def run(message: str, response_style: str) -> Response:
     """
     Orchestrates the three stages:
       1) detect problems in the message,
@@ -36,7 +36,7 @@ def run(message: str) -> Response: # Change return type to Response
 
         # 3. Generate and return the final reply
         # generate_output now returns a dictionary with reply_text, problems, solutions, projects
-        output_data = generate_output(db, message_id, problem_ids, all_solution_ids, project_ids)
+        output_data = generate_output(db, message_id, problem_ids, all_solution_ids, project_ids, answer_style=response_style)
 
         # Construct the unified Response object
         return Response(

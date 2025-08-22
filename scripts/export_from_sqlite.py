@@ -17,11 +17,54 @@ DB_PATH = 'donation.db'
 OUTPUT_DIR = 'initial_data'
 
 
+def create_vec_tables():
+    """
+    Connects to the SQLite database and creates the vec_solutions and vec_problems tables if they don't exist.
+    """
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        # Create vec_solutions table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vec_solutions (
+            id INTEGER PRIMARY KEY,
+            solution_id INTEGER,
+            vector BLOB,
+            FOREIGN KEY (solution_id) REFERENCES solutions(id)
+        )
+        """)
+
+        # Create vec_problems table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vec_problems (
+            id INTEGER PRIMARY KEY,
+            problem_id INTEGER,
+            vector BLOB,
+            FOREIGN KEY (problem_id) REFERENCES problems(id)
+        )
+        """)
+
+        print("Successfully created or verified vec_solutions and vec_problems tables.")
+
+    except sqlite3.Error as e:
+        print(f"Database error during table creation: {e}")
+    except Exception as e:
+        print(f"An error occurred during table creation: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
 def export_tables_to_json():
     """
     Connects to the SQLite database, inspects it to find all tables,
     and exports each table's data to a corresponding JSON file.
     """
+    # Create vector tables if they don't exist
+    create_vec_tables()
+    
     # Ensure the output directory exists
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
@@ -40,8 +83,8 @@ def export_tables_to_json():
         for table_name_tuple in tables:
             table_name = table_name_tuple[0]
 
-            # Skip sqlite internal and vector tables
-            if table_name.startswith('sqlite_') or table_name.startswith('vec_'):
+            # Skip sqlite internal tables
+            if table_name.startswith('sqlite_'):
                 continue
 
             print(f"Exporting table: {table_name}...")

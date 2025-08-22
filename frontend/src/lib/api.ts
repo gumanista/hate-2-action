@@ -1,24 +1,21 @@
-export const fetcher = async (resource: string) => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+import axios from 'axios';
 
-  if (!apiUrl) {
-    throw new Error("NEXT_PUBLIC_API_URL is not defined");
-  }
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+const apiKey = process.env.NEXT_PUBLIC_API_KEY;
 
-  if (!apiKey) {
-    throw new Error("NEXT_PUBLIC_API_KEY is not defined");
-  }
+if (!apiUrl) {
+  throw new Error("NEXT_PUBLIC_API_URL is not defined");
+}
 
-  const response = await fetch(`${apiUrl}${resource}`, {
-    headers: {
-      "X-API-Key": apiKey,
-    },
-  });
+if (!apiKey) {
+  throw new Error("NEXT_PUBLIC_API_KEY is not defined");
+}
 
-  if (!response.ok) {
-    throw new Error("An error occurred while fetching the data.");
-  }
+export const api = axios.create({
+  baseURL: apiUrl,
+  headers: {
+    "X-API-Key": apiKey,
+  },
+});
 
-  return response.json();
-};
+export const fetcher = (url: string) => api.get(url).then((res: { data: any; }) => res.data);

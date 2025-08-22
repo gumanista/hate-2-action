@@ -310,11 +310,15 @@ class Database:
         try:
             cur = self.conn.cursor()
             selected_ids = project_ids[:top_n]
+            logger.debug(f"Fetching projects with IDs: {selected_ids}")
             placeholders = ",".join("%s" for _ in selected_ids)
             query = (
-                f"SELECT project_id, name, description, website, contact_email "
-                f"FROM projects WHERE project_id IN ({placeholders})"
+                "SELECT p.project_id, p.name, p.description, o.website, o.contact_email "
+                "FROM projects p "
+                "LEFT JOIN organizations o ON p.organization_id = o.organization_id "
+                f"WHERE p.project_id IN ({placeholders})"
             )
+            logger.debug(f"Executing query: {query}")
             cur.execute(query, tuple(selected_ids))
             return cur.fetchall()
         except psycopg2.Error as e:
@@ -333,12 +337,12 @@ class Database:
             logger.error("DB insert failed: %s", e)
 
     def create_project(self, name: str, description: str | None, website: str | None,
-                       contact_email: str | None) -> int | None:
+                       contact_email: str | None, organization_id: int | None) -> int | None:
         try:
             cur = self.conn.cursor()
             cur.execute(
-                "INSERT INTO projects (name, description, website, contact_email) VALUES (%s, %s, %s, %s) RETURNING project_id",
-                (name, description, website, contact_email)
+                "INSERT INTO projects (name, description, website, contact_email, organization_id) VALUES (%s, %s, %s, %s, %s) RETURNING project_id",
+                (name, description, website, contact_email, organization_id)
             )
             project_id = cur.fetchone()[0]
             self.conn.commit()
@@ -557,47 +561,84 @@ class Database:
             logger.error("DB delete failed: %s", e)
             return False
 
-    def create_organization(self, name: str) -> int | None:
+    def create_organization(self, name: str, description: str | None, website: str | None, contact_email: str | None, project_ids: List[int] | None) -> int | None:
+        logger.info(f"Creating organization with name: {name}, description: {description}, website: {website}, contact_email: {contact_email}, project_ids: {project_ids}")
         try:
             cur = self.conn.cursor()
             cur.execute(
-                "INSERT INTO organizations (name) VALUES (%s) RETURNING id",
-                (name,)
+                "INSERT INTO organizations (name, description, website, contact_email) VALUES (%s, %s, %s, %s) RETURNING organization_id",
+                (name, description, website, contact_email)
             )
             organization_id = cur.fetchone()[0]
+
+            if project_ids:
+                # Associate projects with the new organization
+                for project_id in project_ids:
+                    cur.execute(
+                        "UPDATE projects SET organization_id = %s WHERE project_id = %s",
+                        (organization_id, project_id)
+                    )
+
             self.conn.commit()
             return organization_id
         except psycopg2.Error as e:
             logger.error("DB insert failed: %s", e)
             return None
 
-    def get_organizations(self) -> List[Tuple[int, str]]:
+    def get_organizations(self) -> List[Tuple[int, str, str, str, str]]:
         try:
             cur = self.conn.cursor()
-            cur.execute("SELECT id, name FROM organizations")
+            cur.execute("SELECT organization_id, name, description, website, contact_email FROM organizations")
             return cur.fetchall()
         except psycopg2.Error as e:
             logger.error("DB query failed: %s", e)
             return []
 
-    def get_organization_by_id(self, organization_id: int) -> Tuple[int, str] | None:
+    def get_organization_by_id(self, organization_id: int) -> Tuple[int, str, str, str, str] | None:
         try:
             cur = self.conn.cursor()
-            cur.execute("SELECT id, name FROM organizations WHERE id = %s", (organization_id,))
+            cur.execute(
+                "SELECT organization_id, name, description, website, contact_email FROM organizations WHERE organization_id = %s",
+                (organization_id,))
             return cur.fetchone()
         except psycopg2.Error as e:
             logger.error("DB query failed: %s", e)
             return None
 
-    def update_organization(self, organization_id: int, name: str) -> bool:
+    def update_organization(self, organization_id: int, name: str | None, description: str | None, website: str | None, contact_email: str | None, project_ids: List[int] | None) -> bool:
         try:
             cur = self.conn.cursor()
-            cur.execute(
-                "UPDATE organizations SET name = %s WHERE id = %s",
-                (name, organization_id)
-            )
+            fields = []
+            values = []
+            if name is not None:
+                fields.append("name = %s")
+                values.append(name)
+            if description is not None:
+                fields.append("description = %s")
+                values.append(description)
+            if website is not None:
+                fields.append("website = %s")
+                values.append(website)
+            if contact_email is not None:
+                fields.append("contact_email = %s")
+                values.append(contact_email)
+
+            if fields:
+                values.append(organization_id)
+                cur.execute(
+                    f"UPDATE organizations SET {', '.join(fields)} WHERE organization_id = %s",
+                    tuple(values)
+                )
+
+            if project_ids is not None:
+                # First, remove existing associations for this organization
+                cur.execute("UPDATE projects SET organization_id = NULL WHERE organization_id = %s", (organization_id,))
+                # Then, add the new associations
+                for project_id in project_ids:
+                    cur.execute("UPDATE projects SET organization_id = %s WHERE project_id = %s", (organization_id, project_id))
+
             self.conn.commit()
-            return cur.rowcount > 0
+            return True
         except psycopg2.Error as e:
             logger.error("DB update failed: %s", e)
             return False
@@ -605,9 +646,17 @@ class Database:
     def delete_organization(self, organization_id: int) -> bool:
         try:
             cur = self.conn.cursor()
-            cur.execute("DELETE FROM organizations WHERE id = %s", (organization_id,))
+            cur.execute("DELETE FROM organizations WHERE organization_id = %s", (organization_id,))
             self.conn.commit()
             return cur.rowcount > 0
         except psycopg2.Error as e:
             logger.error("DB delete failed: %s", e)
             return False
+    def get_projects_by_organization(self, organization_id: int) -> List[Tuple[int, str, str, str, str, str, int]]:
+        try:
+            cur = self.conn.cursor()
+            cur.execute("SELECT project_id, name, description, created_at, website, contact_email, organization_id FROM projects WHERE organization_id = %s", (organization_id,))
+            return cur.fetchall()
+        except psycopg2.Error as e:
+            logger.error("DB query failed: %s", e)
+            return []

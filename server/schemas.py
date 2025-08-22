@@ -21,6 +21,7 @@ class ProjectCreate(BaseModel):
     description: Optional[str] = None
     website: Optional[str] = None
     contact_email: Optional[str] = None
+    organization_id: Optional[int] = None
 
 
 class ProjectUpdate(BaseModel):
@@ -75,25 +76,36 @@ class SolutionUpdate(BaseModel):
 
 
 class Organization(BaseModel):
-    id: int
+    organization_id: int
     name: str
     description: Optional[str] = None
-    created_at: Optional[str] = None
     website: Optional[str] = None
     contact_email: Optional[str] = None
     projects: Optional[List[Project]] = None
 
 
+class OrganizationFull(Organization):
+    projects: List[Project] = []
+ 
 class OrganizationCreate(BaseModel):
     name: str
+    description: Optional[str] = None
+    website: Optional[str] = None
+    contact_email: Optional[str] = None
+    project_ids: Optional[List[int]] = None
 
 
 class OrganizationUpdate(BaseModel):
     name: Optional[str] = None
+    description: Optional[str] = None
+    website: Optional[str] = None
+    contact_email: Optional[str] = None
+    project_ids: Optional[List[int]] = None
 
 
 class ProcessMessageRequest(BaseModel):
     message: str
+    response_style: str
 
 
 class Response(BaseModel):
