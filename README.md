@@ -73,7 +73,10 @@ hate2action/
 │   ├── schema.sql           # Table definitions
 │   └── seed.sql             # Initial organizations, projects, problems, solutions
 ├── pipelines/
-│   └── pipelines.py         # Pipeline logic (process_message, show_orgs, etc.)
+│   ├── message_orchestrator.py  # Intent routing + start/about pipelines
+│   ├── problem_solution.py      # Main complaint-to-action pipeline
+│   ├── show_organizations.py    # Organization search pipeline
+│   └── change_style.py          # Style configuration pipeline
 ├── utils/
 │   └── llm.py               # OpenAI API helpers (embeddings, LLM calls)
 ├── tests/

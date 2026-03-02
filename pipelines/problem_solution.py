@@ -14,13 +14,12 @@ import math
 from db import queries
 from utils import llm
 
-from .shared import (
-    ORG_PROJECT_LINK_THRESHOLD,
-    PROBLEM_SOLUTION_LINK_THRESHOLD,
-    resolve_style,
-)
+from .change_style import resolve_style
 
 logger = logging.getLogger(__name__)
+
+ORG_PROJECT_LINK_THRESHOLD = 0.3
+PROBLEM_SOLUTION_LINK_THRESHOLD = 0.35
 
 
 def _normalize_entities(items: list[dict] | None) -> list[dict]:

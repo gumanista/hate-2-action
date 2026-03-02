@@ -25,7 +25,7 @@ sys.modules["db"] = MagicMock(queries=mock_queries)
 sys.modules["utils.llm"] = mock_llm
 sys.modules["utils"] = MagicMock(llm=mock_llm)
 
-from pipelines.pipelines import (
+from pipelines import (
     pipeline_process_message,
     pipeline_show_orgs,
     pipeline_change_style,

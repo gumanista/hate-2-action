@@ -12,7 +12,7 @@ import logging
 from db import queries
 from utils import llm
 
-from .shared import resolve_style
+from .change_style import resolve_style
 
 logger = logging.getLogger(__name__)
 

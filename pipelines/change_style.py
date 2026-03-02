@@ -10,7 +10,26 @@ Flow:
 from db import queries
 from utils import llm
 
-from .shared import STYLES, STYLE_LABELS_UA
+STYLES = ["polite", "funny", "sarcastic", "normal", "rude"]
+
+STYLE_LABELS_UA = {
+    "polite": "чемний",
+    "funny": "смішний",
+    "sarcastic": "саркастичний",
+    "normal": "нейтральний",
+    "rude": "грубуватий",
+}
+
+
+def resolve_style(user_id: int, chat_id: int) -> str:
+    """Resolve style: user preference -> chat preference -> default normal."""
+    user_style = queries.get_user_style(user_id)
+    if user_style and user_style != "normal":
+        return user_style
+    chat_style = queries.get_chat_style(chat_id)
+    if chat_style and chat_style != "normal":
+        return chat_style
+    return user_style or "normal"
 
 
 async def pipeline_change_style(
