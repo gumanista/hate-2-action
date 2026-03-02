@@ -1,0 +1,37 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: hate2action_db
+    environment:
+      POSTGRES_DB: hate2action
+      POSTGRES_USER: hate2action
+      POSTGRES_PASSWORD: hate2action
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hate2action"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hate2action_bot
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://hate2action:hate2action@db:5432/hate2action
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: python bot/main.py
+
+volumes:
+  pgdata:
