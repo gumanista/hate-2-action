@@ -13,16 +13,16 @@ Design:
 
 # Re-export style constants and style pipeline helpers.
 from .change_style import STYLES, STYLE_LABELS_UA, pipeline_change_style, resolve_style
-# Re-export orchestrator texts and top-level message entrypoints.
-from .message_orchestrator import (
+# Re-export orchestrator top-level message entrypoint.
+from .message_orchestrator import pipeline_process_message
+# Re-export static text helpers from factory module.
+from .pipeline_factory import (
     # Static text used by about command.
     ABOUT_TEXT,
     # Static text used by start command.
     START_TEXT,
     # Function that returns ABOUT_TEXT.
     pipeline_about_me,
-    # Main message routing pipeline.
-    pipeline_process_message,
     # Function that returns START_TEXT.
     pipeline_start,
 )

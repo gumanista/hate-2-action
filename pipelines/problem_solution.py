@@ -8,7 +8,6 @@ Purpose:
 Inputs:
 - Identity/context: `user_id`, `chat_id`, optional `tg_message_id`.
 - Message payload: free-form `message_text`.
-- Chat style context is resolved through `resolve_style(...)`.
 
 Data flow:
 1. Extract structured `problems` and `solutions` from text using LLM.
@@ -19,8 +18,8 @@ Data flow:
    - problem -> solutions by cosine similarity threshold, with best-match fallback.
 5. Retrieve candidate organizations/projects via problem->solution links.
 6. If graph retrieval is empty, run direct embedding fallback search.
-7. Generate final styled response using message, candidates, and chat history.
-8. Persist message/reply pair with `pipeline_used="process_message"`.
+7. Generate baseline response (normal tone) using message, candidates, and chat history.
+8. Return text to orchestrator, which applies tone filter and persists message/reply.
 
 Reliability behavior:
 - Similarity thresholds prevent weak links from polluting join tables.
@@ -38,9 +37,6 @@ import math
 from db import queries
 # Import LLM utilities for extraction, embeddings, and reply generation.
 from utils import llm
-
-# Reuse style resolver to keep response tone consistent.
-from .change_style import resolve_style
 
 # Create module-level logger instance.
 logger = logging.getLogger(__name__)
@@ -216,9 +212,9 @@ async def pipeline_problem_solution(
     """
     # Explicitly mark unused parameter while preserving shared function signature.
     _ = chat_type
+    # Message persistence is handled by message orchestrator.
+    _ = tg_message_id
     try:
-        # Resolve response style for this user/chat.
-        style = resolve_style(user_id, chat_id)
         # Load recent chat history to improve contextual reply generation.
         history = queries.get_chat_history(chat_id, user_id, limit=6)
 
@@ -298,23 +294,8 @@ async def pipeline_problem_solution(
             projects = queries.find_projects_by_embedding(fallback_embedding, top_n=3)
 
         # Generate final user-facing reply using style, matches, and conversation history.
-        reply = llm.generate_reply(message_text, style, orgs, projects, history)
-
-        # Persist message pair and pipeline marker for history and analytics.
-        queries.save_message(
-            # Chat context id.
-            chat_id,
-            # User context id.
-            user_id,
-            # Original user message.
-            message_text,
-            # Generated reply text.
-            reply,
-            # Optional Telegram message id.
-            tg_message_id=tg_message_id,
-            # Pipeline marker for analytics/debugging.
-            pipeline_used="process_message",
-        )
+        # Tone/style post-processing is applied by message orchestrator.
+        reply = llm.generate_reply(message_text, "normal", orgs, projects, history)
         # Return generated reply.
         return reply
     except Exception as e:

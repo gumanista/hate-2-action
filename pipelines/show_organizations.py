@@ -11,12 +11,11 @@ Inputs:
 
 Execution steps:
 1. Ensure user/chat records exist.
-2. Resolve response style (`resolve_style`) for consistent tone.
-3. Enrich category query text through LLM to improve semantic recall.
-4. Convert enriched query into embedding vector.
-5. Run nearest-neighbor search for organizations and projects.
-6. Generate a concise styled response from retrieved candidates.
-7. Persist request/reply pair with `pipeline_used="show_orgs"`.
+2. Enrich category query text through LLM to improve semantic recall.
+3. Convert enriched query into embedding vector.
+4. Run nearest-neighbor search for organizations and projects.
+5. Generate a baseline response (normal tone) from retrieved candidates.
+6. Return text to orchestrator for tone filtering and persistence.
 
 Failure behavior:
 - Exceptions are logged with stack traces and return a safe retry message.
@@ -29,9 +28,6 @@ import logging
 from db import queries
 # Import LLM helpers for query enrichment, embeddings, and reply generation.
 from utils import llm
-
-# Reuse style resolution logic to keep answer tone consistent.
-from .change_style import resolve_style
 
 # Create module-level logger instance.
 logger = logging.getLogger(__name__)
@@ -60,8 +56,8 @@ async def pipeline_show_orgs(
         queries.get_or_create_user(user_id)
         # Ensure chat exists before saving/querying related data.
         queries.get_or_create_chat(chat_id, chat_type)
-        # Determine active response style (user override -> chat fallback -> normal).
-        style = resolve_style(user_id, chat_id)
+        # Message persistence is handled by message orchestrator.
+        _ = tg_message_id
 
         # Expand/clarify short category message to improve semantic retrieval quality.
         enriched = llm.enrich_query(category_message)
@@ -73,27 +69,9 @@ async def pipeline_show_orgs(
         # Retrieve nearest projects by vector similarity.
         projects = queries.find_projects_by_embedding(emb, top_n=5)
 
-        # Generate final response text from matches in requested tone/style.
-        reply = llm.generate_org_reply(category_message, orgs, projects, style)
-        # Persist user input and bot reply for history/analytics.
-        queries.save_message(
-            # Chat context id.
-            chat_id,
-            # User context id.
-            user_id,
-            # Original message text from user.
-            category_message,
-            # Final reply produced by LLM.
-            reply,
-            # Telegram message identifier if provided.
-            tg_message_id=tg_message_id,
-            # Pipeline marker for later debugging/metrics.
-            pipeline_used="show_orgs",
-        )
-        # Return generated reply to caller.
+        # Tone/style post-processing is applied by message orchestrator.
+        reply = llm.generate_org_reply(category_message, orgs, projects, "normal")
         return reply
     except Exception as e:
-        # Log full error with stack trace for diagnostics.
         logger.error(f"show_orgs pipeline error: {e}", exc_info=True)
-        # Return safe user-facing fallback error message.
         return "⚠️ Зараз не вдалося знайти організації. Спробуй ще раз."

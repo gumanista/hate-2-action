@@ -34,11 +34,8 @@ if PROJECT_ROOT not in sys.path:
 
 from pipelines import (
     pipeline_process_message,
-    pipeline_show_orgs,
-    pipeline_change_style,
-    pipeline_about_me,
-    pipeline_start,
     STYLES,
+    STYLE_LABELS_UA,
 )
 
 load_dotenv()
@@ -52,22 +49,6 @@ logger = logging.getLogger(__name__)
 WAITING_FOR_CATEGORY = 1
 # Reserved state id for style flow (currently not used by ConversationHandler).
 WAITING_FOR_STYLE = 2
-
-
-# TODO: do i need those labes in ukr? 
-# User-facing Ukrainian labels for available response styles.
-STYLE_LABELS_UA = {
-    # Label for polite style.
-    "polite": "Чемний",
-    # Label for funny style.
-    "funny": "Смішний",
-    # Label for sarcastic style.
-    "sarcastic": "Саркастичний",
-    # Label for normal style.
-    "normal": "Нейтральний",
-    # Label for rude style.
-    "rude": "Грубуватий",
-}
 
 
 # Build inline keyboard with style buttons (3 buttons per row).
@@ -103,9 +84,22 @@ def _get_start_keyboard() -> InlineKeyboardMarkup:
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # `context` is unused in this handler but kept for framework signature compatibility.
     _ = context
-    # Send static start text with Markdown and start menu keyboard.
+    # Extract current user object from update.
+    user = update.effective_user
+    # Extract current chat object from update.
+    chat = update.effective_chat
+    # Delegate command handling to orchestrator.
+    reply = await pipeline_process_message(
+        user.id,
+        chat.id,
+        chat.type,
+        "/start",
+        tg_message_id=update.message.message_id,
+        forced_pipeline="start",
+    )
+    # Send start text with Markdown and start menu keyboard.
     await update.message.reply_text(
-        pipeline_start(),
+        reply,
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=_get_start_keyboard(),
     )
@@ -115,33 +109,61 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_about(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # `context` is unused in this handler but kept for framework signature compatibility.
     _ = context
-    # Send static about text.
+    # Extract current user object from update.
+    user = update.effective_user
+    # Extract current chat object from update.
+    chat = update.effective_chat
+    # Delegate command handling to orchestrator.
+    reply = await pipeline_process_message(
+        user.id,
+        chat.id,
+        chat.type,
+        "/about",
+        tg_message_id=update.message.message_id,
+        forced_pipeline="about_me",
+    )
+    # Send about text.
     await update.message.reply_text(
-        pipeline_about_me(),
+        reply,
         parse_mode=ParseMode.MARKDOWN,
     )
 
 
 # Handle `/style` command (with optional argument).
 async def cmd_style(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Extract current user object from update.
+    user = update.effective_user
+    # Extract current chat object from update.
+    chat = update.effective_chat
     # Read command arguments, e.g. `/style funny` -> ["funny"].
     args = context.args
     # If first arg is valid style, apply it directly.
     if args and args[0].lower() in STYLES:
-        # Extract current user object from update.
-        user = update.effective_user
-        # Extract current chat object from update.
-        chat = update.effective_chat
-        # Delegate style update to style pipeline.
-        reply = await pipeline_change_style(
-            user.id, chat.id, chat.type, requested_style=args[0].lower()
+        # Delegate style update to orchestrator.
+        reply = await pipeline_process_message(
+            user.id,
+            chat.id,
+            chat.type,
+            f"/style_{args[0].lower()}",
+            tg_message_id=update.message.message_id,
+            forced_pipeline="change_style",
         )
         # Send pipeline response to user.
         await update.message.reply_text(reply, parse_mode=ParseMode.MARKDOWN)
     else:
-        # If no valid style arg, ask user to choose from inline keyboard.
+        # Delegate style options response to orchestrator.
+        reply = await pipeline_process_message(
+            user.id,
+            chat.id,
+            chat.type,
+            "/style",
+            tg_message_id=update.message.message_id,
+            forced_pipeline="change_style",
+        )
+        # If no valid style arg, send text plus inline keyboard.
         await update.message.reply_text(
-            "🎭 Обери стиль відповіді:",
+            reply,
+            parse_mode=ParseMode.MARKDOWN,
             reply_markup=_get_style_keyboard(),
         )
 
@@ -161,9 +183,14 @@ async def cmd_style_shortcut(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user = update.effective_user
         # Extract chat object.
         chat = update.effective_chat
-        # Apply style through pipeline.
-        reply = await pipeline_change_style(
-            user.id, chat.id, chat.type, requested_style=style
+        # Apply style through orchestrator.
+        reply = await pipeline_process_message(
+            user.id,
+            chat.id,
+            chat.type,
+            update.message.text,
+            tg_message_id=update.message.message_id,
+            forced_pipeline="change_style",
         )
         # Return confirmation text from pipeline.
         await update.message.reply_text(reply, parse_mode=ParseMode.MARKDOWN)
@@ -171,12 +198,22 @@ async def cmd_style_shortcut(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 # Start `/orgs` conversation by asking user for category.
 async def cmd_orgs_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # `context` is unused in this handler but kept for framework signature compatibility.
-    _ = context
+    # Extract user object for pipeline context.
+    user = update.effective_user
+    # Extract chat object for pipeline context.
+    chat = update.effective_chat
+    # Delegate command to orchestrator, which returns clarification prompt.
+    reply = await pipeline_process_message(
+        user.id,
+        chat.id,
+        chat.type,
+        "/orgs",
+        tg_message_id=update.message.message_id,
+        forced_pipeline="show_orgs",
+    )
     # Prompt user to provide a category/topic.
     await update.message.reply_text(
-        "🏢 НГО якої категорії тебе цікавлять?\n\n"
-        "Наприклад: освіта, армія, економіка тощо.",
+        reply,
         parse_mode=ParseMode.MARKDOWN,
     )
     # Move conversation to category-waiting state.
@@ -196,9 +233,14 @@ async def cmd_orgs_receive_category(update: Update, context: ContextTypes.DEFAUL
 
     # Inform user that semantic search is in progress.
     await update.message.reply_text("🔍 Шукаю організації...", parse_mode=ParseMode.MARKDOWN)
-    # Delegate category search to organizations pipeline.
-    reply = await pipeline_show_orgs(
-        user.id, chat.id, chat.type, category, tg_message_id=update.message.message_id
+    # Delegate category search to orchestrator.
+    reply = await pipeline_process_message(
+        user.id,
+        chat.id,
+        chat.type,
+        category,
+        tg_message_id=update.message.message_id,
+        forced_pipeline="show_orgs",
     )
     # Send resulting recommendations.
     await update.message.reply_text(
@@ -237,32 +279,61 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data.startswith("style:"):
         # Parse style id from callback payload.
         style = data.split(":")[1]
-        # Apply style update through style pipeline.
-        reply = await pipeline_change_style(
-            user.id, chat.id, chat.type, requested_style=style
+        # Apply style update through orchestrator.
+        reply = await pipeline_process_message(
+            user.id,
+            chat.id,
+            chat.type,
+            f"/style_{style}",
+            tg_message_id=query.message.message_id if query.message else None,
+            forced_pipeline="change_style",
         )
         # Replace original message text with confirmation reply.
         await query.edit_message_text(reply, parse_mode=ParseMode.MARKDOWN)
 
     # About menu callback.
     elif data == "menu:about_me":
-        # Replace message with about text.
-        await query.edit_message_text(pipeline_about_me(), parse_mode=ParseMode.MARKDOWN)
+        # Replace message with orchestrator-provided about text.
+        reply = await pipeline_process_message(
+            user.id,
+            chat.id,
+            chat.type,
+            "/about",
+            tg_message_id=query.message.message_id if query.message else None,
+            forced_pipeline="about_me",
+        )
+        await query.edit_message_text(reply, parse_mode=ParseMode.MARKDOWN)
 
     # Change-style menu callback.
     elif data == "menu:change_style":
-        # Replace message with style chooser keyboard.
+        # Replace message with style chooser text produced by orchestrator.
+        reply = await pipeline_process_message(
+            user.id,
+            chat.id,
+            chat.type,
+            "/style",
+            tg_message_id=query.message.message_id if query.message else None,
+            forced_pipeline="change_style",
+        )
         await query.edit_message_text(
-            "🎭 Обери бажаний стиль відповіді:",
+            reply,
+            parse_mode=ParseMode.MARKDOWN,
             reply_markup=_get_style_keyboard(),
         )
 
     # Show-orgs menu callback.
     elif data == "menu:show_orgs":
-        # Ask user for category in follow-up message.
+        # Ask user for category in follow-up message using orchestrator prompt.
+        reply = await pipeline_process_message(
+            user.id,
+            chat.id,
+            chat.type,
+            "/orgs",
+            tg_message_id=query.message.message_id if query.message else None,
+            forced_pipeline="show_orgs",
+        )
         await query.edit_message_text(
-            "🏢 Організації якої категорії тебе цікавлять?\n\n"
-            "Відповідай на це повідомлення темою, наприклад: *клімат*, *корупція*, *здоровʼя* тощо.",
+            reply,
             parse_mode=ParseMode.MARKDOWN,
         )
         # Set a user-level flag to treat next text as organization category query.
@@ -310,9 +381,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.pop("waiting_for_org_category")
         # Inform user that organization search is running.
         await message.reply_text("🔍 Шукаю організації...", parse_mode=ParseMode.MARKDOWN)
-        # Route user text directly to organization search pipeline.
-        reply = await pipeline_show_orgs(
-            user.id, chat.id, chat.type, text, tg_message_id=message.message_id
+        # Route user text to orchestrator with explicit show-orgs intent.
+        reply = await pipeline_process_message(
+            user.id,
+            chat.id,
+            chat.type,
+            text,
+            tg_message_id=message.message_id,
+            forced_pipeline="show_orgs",
         )
         # Send search result and suppress URL previews for cleaner output.
         await message.reply_text(
@@ -349,27 +425,20 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-# Application bootstrap and polling start.
 def main():
-    # Read Telegram bot token from environment.
     token = os.getenv("TELEGRAM_BOT_TOKEN")
-    # Fail fast when token is missing.
     if not token:
-        # Raise explicit configuration error.
         raise ValueError("TELEGRAM_BOT_TOKEN environment variable not set")
 
-    # Build Telegram application instance.
     app = Application.builder().token(token).build()
 
-    # Register static command handlers.
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("about", cmd_about))
     app.add_handler(CommandHandler("style", cmd_style))
-    # Register per-style shortcut commands like `/style_funny`.
+    
     for style in STYLES:
         app.add_handler(CommandHandler(f"style_{style}", cmd_style_shortcut))
 
-    # Configure and register conversation flow for `/orgs` interactive mode.
     org_conv = ConversationHandler(
         # Entry point when user sends `/orgs` command.
         entry_points=[CommandHandler("orgs", cmd_orgs_start)],

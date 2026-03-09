@@ -35,15 +35,10 @@ CHAT_MODEL = "gpt-4o-mini"
 
 # Tone presets keyed by style id used across response generation functions.
 STYLE_INSTRUCTIONS = {
-    # Polite tone instruction.
     "polite": "Відповідай лише українською мовою. Тон теплий, ввічливий і підтримувальний.",
-    # Funny tone instruction.
     "funny": "Відповідай лише українською мовою. Додай легкий гумор, але залишайся корисним.",
-    # Sarcastic tone instruction.
     "sarcastic": "Відповідай лише українською мовою. Використовуй стриманий сарказм, але веди користувача до дій.",
-    # Neutral tone instruction.
     "normal": "Відповідай лише українською мовою. Тон нейтральний, чіткий і збалансований.",
-    # Rude/direct tone instruction.
     "rude": "Відповідай лише українською мовою. Пиши різко і прямо, з практичними порадами.",
 }
 
@@ -68,8 +63,6 @@ def get_embedding(text: str) -> list[float]:
 
 # Classify raw user message into one orchestrator pipeline label.
 def detect_pipeline(message: str) -> str:
-    """Classify the message intent into a pipeline name."""
-    # Build strict classification prompt with allowed categories.
     prompt = f"""Classify this Telegram bot message into exactly ONE of these categories:
 - change_style (user wants to change response style/tone)
 - show_orgs (user wants to find NGOs or organizations)
@@ -304,3 +297,33 @@ Return only the enriched text."""
     )
     # Return enriched text trimmed to hard 800-char cap.
     return response.choices[0].message.content.strip()[:800]
+
+
+# Rewrite already-generated pipeline response into the requested tone.
+def rewrite_reply_with_style(text: str, style: str) -> str:
+    """Apply style as a post-generation filter while preserving content."""
+    # Keep neutral text unchanged.
+    if style == "normal":
+        return text
+    # Resolve instruction and fall back to normal when style is unknown.
+    style_instruction = STYLE_INSTRUCTIONS.get(style, STYLE_INSTRUCTIONS["normal"])
+    # Prompt model to rewrite tone without changing facts/links.
+    system_prompt = (
+        f"{style_instruction}\n"
+        "Перепиши текст у заданому тоні. Не вигадуй нових фактів. "
+        "Збережи Markdown-посилання, назви організацій/проєктів і практичні кроки."
+    )
+    # Provide original output as the source text for rewrite.
+    user_prompt = f"Оригінальний текст:\n{text}\n\nПоверни тільки фінальний переписаний текст."
+    # Ask model to apply style filter.
+    response = client.chat.completions.create(
+        model=CHAT_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        max_tokens=500,
+        temperature=0.3,
+    )
+    # Return rewritten text.
+    return response.choices[0].message.content.strip()

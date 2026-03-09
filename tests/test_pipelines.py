@@ -35,6 +35,7 @@ from pipelines import (
     ABOUT_TEXT,
     START_TEXT,
 )
+from pipelines.pipeline_factory import _needs_org_category_clarification
 
 
 class TestStartPipeline(unittest.TestCase):
@@ -122,6 +123,7 @@ class TestProcessMessagePipeline(unittest.IsolatedAsyncioTestCase):
         }
         mock_llm.get_embedding.return_value = [0.1] * 1536
         mock_llm.generate_reply.return_value = "I understand your frustration! Check out [Greenpeace](https://greenpeace.org)."
+        mock_llm.rewrite_reply_with_style.return_value = "rewritten"
 
     async def test_user_is_created(self):
         await pipeline_process_message(
@@ -145,7 +147,7 @@ class TestProcessMessagePipeline(unittest.IsolatedAsyncioTestCase):
             user_id=42, chat_id=999, chat_type="private",
             message_text="Politicians are all corrupt!",
         )
-        call_args = mock_llm.generate_reply.call_args
+        call_args = mock_llm.rewrite_reply_with_style.call_args
         self.assertEqual(call_args.args[1], "sarcastic")
 
     async def test_returns_reply_string(self):
@@ -201,7 +203,18 @@ class TestShowOrgsPipeline(unittest.IsolatedAsyncioTestCase):
 
     async def test_message_saved(self):
         await pipeline_show_orgs(1, 100, "private", "poverty")
-        mock_queries.save_message.assert_called_once()
+        mock_queries.save_message.assert_not_called()
+
+
+class TestShowOrgsClarification(unittest.TestCase):
+    def test_single_topic_word_does_not_require_clarification(self):
+        self.assertFalse(_needs_org_category_clarification("освіта"))
+
+    def test_generic_request_requires_clarification(self):
+        self.assertTrue(_needs_org_category_clarification("покажи організації"))
+
+    def test_org_request_with_topic_does_not_require_clarification(self):
+        self.assertFalse(_needs_org_category_clarification("організації освіти"))
 
 
 class TestStyleResolution(unittest.IsolatedAsyncioTestCase):
@@ -226,27 +239,27 @@ class TestStyleResolution(unittest.IsolatedAsyncioTestCase):
         }
         mock_llm.get_embedding.return_value = [0.1] * 1536
         mock_llm.generate_reply.return_value = "reply"
+        mock_llm.rewrite_reply_with_style.return_value = "styled reply"
 
     async def test_user_style_takes_priority(self):
         mock_queries.get_user_style.return_value = "funny"
         mock_queries.get_chat_style.return_value = "rude"
         await pipeline_process_message(1, 100, "private", "I hate taxes")
-        call_args = mock_llm.generate_reply.call_args
+        call_args = mock_llm.rewrite_reply_with_style.call_args
         self.assertEqual(call_args.args[1], "funny")
 
     async def test_chat_style_fallback(self):
         mock_queries.get_user_style.return_value = "normal"
         mock_queries.get_chat_style.return_value = "sarcastic"
         await pipeline_process_message(1, 100, "private", "traffic is terrible")
-        call_args = mock_llm.generate_reply.call_args
+        call_args = mock_llm.rewrite_reply_with_style.call_args
         self.assertEqual(call_args.args[1], "sarcastic")
 
     async def test_default_normal_style(self):
         mock_queries.get_user_style.return_value = "normal"
         mock_queries.get_chat_style.return_value = None
         await pipeline_process_message(1, 100, "private", "healthcare is broken")
-        call_args = mock_llm.generate_reply.call_args
-        self.assertEqual(call_args.args[1], "normal")
+        mock_llm.rewrite_reply_with_style.assert_not_called()
 
 
 if __name__ == "__main__":
