@@ -109,6 +109,30 @@ def get_chat_history(chat_id: int, user_id: int = None, limit: int = 10) -> list
             )
         return [dict(r) for r in cur.fetchall()][::-1]
 
+
+def get_last_message_context(chat_id: int, user_id: int = None) -> dict | None:
+    with db_cursor() as cur:
+        if user_id:
+            cur.execute(
+                """SELECT message_text, reply_text, pipeline_used
+                   FROM messages_history
+                   WHERE chat_id = %s AND user_id = %s
+                   ORDER BY date DESC
+                   LIMIT 1""",
+                (chat_id, user_id),
+            )
+        else:
+            cur.execute(
+                """SELECT message_text, reply_text, pipeline_used
+                   FROM messages_history
+                   WHERE chat_id = %s
+                   ORDER BY date DESC
+                   LIMIT 1""",
+                (chat_id,),
+            )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
 def upsert_problem(name: str, context: str, content: str, embedding: list[float]) -> int:
     """Insert a problem if cosine similarity to existing ones is below threshold."""
     with db_cursor() as cur:

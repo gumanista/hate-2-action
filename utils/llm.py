@@ -67,38 +67,60 @@ def get_embedding(text: str) -> list[float]:
     """Return a 1536-dim embedding for the given text."""
     response = client.embeddings.create(model=EMBEDDING_MODEL, input=text[:8000])
     return response.data[0].embedding
-def detect_pipeline(message: str) -> str:
-    prompt = f"""Classify this Telegram bot message into exactly ONE intent category.
 
-Categories and keyword hints:
+def detect_pipeline(
+    message: str,
+    previous_message: str | None = None,
+    previous_reply: str | None = None,
+    previous_pipeline: str | None = None,
+) -> str:
+    previous_pipeline_name = (
+        "problem_solution"
+        if previous_pipeline == "process_message"
+        else (previous_pipeline or "")
+    )
+    prompt = f"""Визнач, який пайплайн Telegram-бота має обробити нове повідомлення користувача.
 
-1) change_style
-Meaning: user wants to change bot tone, writing style, vibe, wording mode, or response format.
-Keywords/phrases: style, tone, writing style, response style, change style, switch style, set style, rewrite in style, be polite, be funny, be sarcastic, be rude, neutral tone, formal tone, informal tone, less sarcasm, more humor, simple language, коротко, детальніше, простіше, стиль, тон, манера, формат відповіді, перефразуй, зміни стиль, зміни тон, пиши ввічливо, пиши смішно, пиши саркастично, пиши різко, пиши нейтрально, говори простіше, зроби коротше, не жартуй, більше жартів.
+Поверни рівно ОДНУ назву пайплайна:
+- change_style
+- show_orgs
+- about_me
+- problem_solution
 
-2) show_orgs
-Meaning: user wants NGOs/organizations/charities/projects/initiatives, where to apply, where to ask for help, where to volunteer, who can help with an issue.
-Keywords/phrases: NGO, NGOs, organization, organizations, non-profit, nonprofit, charity, charities, foundation, initiative, civil society, volunteer, volunteering, where to go, who can help, contacts, support center, hotline, legal aid, psychological help, shelters, human rights group, eco group, anti-corruption group, donor, grant, activism group, community group, НГО, громадська організація, організація, фонд, благодійність, ініціатива, волонтери, волонтерство, куди звернутися, хто допоможе, знайди організації, покажи організації, підбери НГО, контакти організацій, проєкти, активізм.
+Що робить кожен пайплайн:
 
-3) about_me
-Meaning: user asks about bot identity, purpose, capabilities, limitations, how it works, what it can do.
-Keywords/phrases: who are you, what are you, what is this bot, what can you do, help, commands, features, capabilities, how to use, how you work, what is Hate-2-Action, instructions, about bot, your role, your mission, хто ти, що ти вмієш, що це за бот, як користуватись, як ти працюєш, які команди, можливості бота, про бота, твоя роль, твоя місія, навіщо цей бот.
+1. change_style
+Обирай, якщо користувач хоче змінити тон або формат відповідей бота.
+Приклади наміру: змінити стиль, писати ввічливо, писати смішно, менше сарказму, коротше, простіше, формальніше.
 
-4) process_message
-Meaning: user describes a personal/social problem, frustration, rant, complaint, conflict, injustice, anger, fear, stress, burnout, helplessness, asks for practical advice or actions.
-Keywords/phrases: problem, issue, complaint, rant, angry, upset, frustrated, tired, hopeless, stuck, conflict, injustice, corruption, discrimination, violence, stress, anxiety, burnout, depression feelings, overwhelmed, what should I do, help me act, action plan, next steps, проблема, скарга, обурення, бісить, злість, несправедливість, корупція, дискримінація, насильство, тривога, стрес, вигорання, безсилля, не знаю що робити, порадь кроки, що робити далі.
+2. show_orgs
+Обирай, якщо користувач прямо просить знайти, показати або підібрати організації, фонди, ініціативи, контакти, гарячі лінії або місця, куди звернутися.
+Також обирай цей варіант, якщо попереднє повідомлення бота просило назвати тему/категорію для пошуку організацій, а поточне повідомлення схоже саме на таку тему.
 
-Routing rules:
-- Return exactly one category name: change_style, show_orgs, about_me, or process_message.
-- If style-change intent is explicit, choose change_style even if other topics appear.
-- If user asks primarily for organizations/where to apply/help contacts, choose show_orgs.
-- If user asks mainly about bot identity/capabilities, choose about_me.
-- Otherwise default to process_message.
-- Treat minor typos, mixed alphabets, transliteration, and spelling noise as intended words.
+3. about_me
+Обирай, якщо користувач питає, хто такий бот, що він уміє, як ним користуватися, які є команди, яка його мета або як він працює.
 
-Message: "{message}"
+4. problem_solution
+Обирай, якщо користувач описує проблему, обурення, конфлікт, несправедливість, стрес або безсилля і хоче зрозуміти, що робити далі.
+Це основний пайплайн для скарг, емоційного контексту, запиту на практичні кроки, план дій або поради.
 
-Respond with only the category name, nothing else."""
+Правила маршрутизації:
+- Якщо є явний запит на зміну стилю, обирай change_style навіть якщо в повідомленні є інші теми.
+- Якщо користувач явно хоче список організацій, контакти, фонди, гарячі лінії або місця для звернення, обирай show_orgs.
+- Якщо користувач переважно питає про бота та його можливості, обирай about_me.
+- Якщо користувач описує проблему і питає, як діяти, що робити, як допомогти або як реагувати, обирай problem_solution, навіть якщо організації можуть знадобитися пізніше.
+- Якщо є сумнів, обирай problem_solution.
+- Ігноруй дрібні помилки, трансліт, суржик і змішані мови, якщо намір зрозумілий.
+
+Контекст попереднього ходу розмови:
+Попереднє повідомлення користувача: "{previous_message or ''}"
+Попередня відповідь бота: "{previous_reply or ''}"
+Попередній пайплайн: "{previous_pipeline_name}"
+
+Нове повідомлення користувача:
+"{message}"
+
+Відповідай тільки назвою пайплайна без пояснень."""
     response = client.chat.completions.create(
         model=CHAT_MODEL,
         messages=[{"role": "user", "content": prompt}],
@@ -106,35 +128,10 @@ Respond with only the category name, nothing else."""
         temperature=0,
     )
     result = response.choices[0].message.content.strip().lower()
-    valid = {"change_style", "show_orgs", "about_me", "process_message"}
-    return result if result in valid else "process_message"
-def needs_org_category_clarification(message: str) -> bool:
-    """Return True when org-search intent is present but topic/category is missing."""
-    prompt = f"""Ти визначаєш, чи потрібно попросити користувача уточнити категорію
-для пошуку організацій.
-
-Поверни ТІЛЬКИ одне слово:
-- clarify: якщо у повідомленні немає конкретної теми/категорії (наприклад, лише "покажи організації")
-- proceed: якщо є конкретна тема (наприклад, "організації проти корупції", "climate NGOs", "освіта")
-
-Правила:
-- Враховуй дрібні помилки, опечатки, трансліт і змішані алфавіти.
-- Якщо не впевнений, обирай clarify.
-
-Повідомлення: "{message}"
-"""
-    response = client.chat.completions.create(
-        model=CHAT_MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=10,
-        temperature=0,
-    )
-    result = response.choices[0].message.content.strip().lower()
-    if result == "proceed":
-        return False
-    if result == "clarify":
-        return True
-    return True
+    if result == "process_message":
+        result = "problem_solution"
+    valid = {"change_style", "show_orgs", "about_me", "problem_solution"}
+    return result if result in valid else "problem_solution"
 def extract_problems_and_solutions(message: str) -> dict:
     """Extract problems and solutions from a user complaint using LLM."""
     prompt = f"""Analyze this message and extract:

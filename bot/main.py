@@ -36,8 +36,8 @@ from pipelines import (
     pipeline_process_message,
     STYLES,
     STYLE_LABELS_UA,
-    ORG_CATEGORY_CLARIFICATION_TEXT,
 )
+from db import queries
 
 load_dotenv()
 logging.basicConfig(
@@ -48,6 +48,10 @@ logger = logging.getLogger(__name__)
 
 WAITING_FOR_CATEGORY = 1
 WAITING_FOR_STYLE = 2
+ORG_SEARCH_PROMPT = (
+    "🏢 Яку тему або категорію організацій шукаєш?\n\n"
+    "Напиши, наприклад: корупція, права тварин, освіта, здоровʼя."
+)
 
 
 def _get_style_keyboard() -> InlineKeyboardMarkup:
@@ -160,18 +164,21 @@ async def cmd_style_shortcut(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def cmd_orgs_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    _ = context
     user = update.effective_user
     chat = update.effective_chat
-    reply = await pipeline_process_message(
-        user.id,
+    queries.get_or_create_user(user.id)
+    queries.get_or_create_chat(chat.id, chat.type)
+    queries.save_message(
         chat.id,
-        chat.type,
+        user.id,
         "/orgs",
+        ORG_SEARCH_PROMPT,
         tg_message_id=update.message.message_id,
-        forced_pipeline="show_orgs",
+        pipeline_used="show_orgs",
     )
     await update.message.reply_text(
-        reply,
+        ORG_SEARCH_PROMPT,
         parse_mode=ParseMode.MARKDOWN,
     )
     return WAITING_FOR_CATEGORY
@@ -190,15 +197,12 @@ async def cmd_orgs_receive_category(update: Update, context: ContextTypes.DEFAUL
         chat.type,
         category,
         tg_message_id=update.message.message_id,
-        forced_pipeline="show_orgs",
     )
     await update.message.reply_text(
         reply,
         parse_mode=ParseMode.MARKDOWN,
         disable_web_page_preview=True,
     )
-    if reply == ORG_CATEGORY_CLARIFICATION_TEXT:
-        return WAITING_FOR_CATEGORY
     return ConversationHandler.END
 
 
@@ -252,16 +256,18 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=_get_style_keyboard(),
         )
     elif data == "menu:show_orgs":
-        reply = await pipeline_process_message(
-            user.id,
+        queries.get_or_create_user(user.id)
+        queries.get_or_create_chat(chat.id, chat.type)
+        queries.save_message(
             chat.id,
-            chat.type,
+            user.id,
             "/orgs",
+            ORG_SEARCH_PROMPT,
             tg_message_id=query.message.message_id if query.message else None,
-            forced_pipeline="show_orgs",
+            pipeline_used="show_orgs",
         )
         await query.edit_message_text(
-            reply,
+            ORG_SEARCH_PROMPT,
             parse_mode=ParseMode.MARKDOWN,
         )
         context.user_data["waiting_for_org_category"] = True
@@ -286,29 +292,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = text.replace(f"@{bot_username}", "").strip()
     if context.user_data.get("waiting_for_org_category"):
         context.user_data.pop("waiting_for_org_category")
-        await message.reply_text("🔍 Шукаю організації...", parse_mode=ParseMode.MARKDOWN)
+        await context.bot.send_chat_action(chat_id=chat.id, action="typing")
         reply = await pipeline_process_message(
             user.id,
             chat.id,
             chat.type,
             text,
             tg_message_id=message.message_id,
-            forced_pipeline="show_orgs",
         )
         await message.reply_text(
             reply,
             parse_mode=ParseMode.MARKDOWN,
             disable_web_page_preview=True,
         )
-        if reply == ORG_CATEGORY_CLARIFICATION_TEXT:
-            context.user_data["waiting_for_org_category"] = True
         return
     await context.bot.send_chat_action(chat_id=chat.id, action="typing")
     reply = await pipeline_process_message(
         user.id, chat.id, chat.type, text, tg_message_id=message.message_id
     )
-    if reply == ORG_CATEGORY_CLARIFICATION_TEXT:
-        context.user_data["waiting_for_org_category"] = True
     await message.reply_text(
         reply,
         parse_mode=ParseMode.MARKDOWN,

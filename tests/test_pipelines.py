@@ -33,7 +33,6 @@ from pipelines import (
     ABOUT_TEXT,
     START_TEXT,
 )
-from pipelines.pipeline_factory import _needs_org_category_clarification
 
 
 class TestStartPipeline(unittest.TestCase):
@@ -104,6 +103,7 @@ class TestProcessMessagePipeline(unittest.IsolatedAsyncioTestCase):
         mock_queries.get_user_style.return_value = "normal"
         mock_queries.get_chat_style.return_value = "normal"
         mock_queries.get_chat_history.return_value = []
+        mock_queries.get_last_message_context.return_value = None
         mock_queries.upsert_problem.return_value = 1
         mock_queries.upsert_solution.return_value = 1
         mock_queries.find_orgs_via_solutions.return_value = [
@@ -119,6 +119,7 @@ class TestProcessMessagePipeline(unittest.IsolatedAsyncioTestCase):
             "problems": [{"name": "Climate change", "context": "global warming", "content": "rising temps"}],
             "solutions": [{"name": "Donate to NGO", "context": "financial support", "content": "give money"}],
         }
+        mock_llm.detect_pipeline.return_value = "process_message"
         mock_llm.get_embedding.return_value = [0.1] * 1536
         mock_llm.generate_reply.return_value = "I understand your frustration! Check out [Greenpeace](https://greenpeace.org)."
         mock_llm.rewrite_reply_with_style.return_value = "rewritten"
@@ -172,6 +173,61 @@ class TestProcessMessagePipeline(unittest.IsolatedAsyncioTestCase):
         call_kwargs = mock_queries.save_message.call_args.kwargs
         self.assertEqual(call_kwargs.get("pipeline_used"), "process_message")
 
+    async def test_show_orgs_false_positive_is_routed_to_process_message(self):
+        mock_llm.detect_pipeline.return_value = "process_message"
+
+        await pipeline_process_message(
+            user_id=42,
+            chat_id=999,
+            chat_type="private",
+            message_text="Як допомогти тваринкам?",
+        )
+
+        call_kwargs = mock_queries.save_message.call_args.kwargs
+        self.assertEqual(call_kwargs.get("pipeline_used"), "process_message")
+
+    async def test_previous_message_context_is_passed_to_detector(self):
+        mock_queries.get_last_message_context.return_value = {
+            "pipeline_used": "show_orgs",
+            "message_text": "/orgs",
+            "reply_text": "Яку тему або категорію організацій шукаєш?",
+        }
+        mock_llm.detect_pipeline.return_value = "show_orgs"
+
+        await pipeline_process_message(
+            user_id=42,
+            chat_id=999,
+            chat_type="private",
+            message_text="корупція",
+        )
+
+        mock_llm.detect_pipeline.assert_called_with(
+            "корупція",
+            previous_message="/orgs",
+            previous_reply="Яку тему або категорію організацій шукаєш?",
+            previous_pipeline="show_orgs",
+        )
+        call_kwargs = mock_queries.save_message.call_args.kwargs
+        self.assertEqual(call_kwargs.get("pipeline_used"), "show_orgs")
+
+    async def test_llm_can_choose_process_message_even_after_org_prompt(self):
+        mock_queries.get_last_message_context.return_value = {
+            "pipeline_used": "show_orgs",
+            "message_text": "/orgs",
+            "reply_text": "Яку тему або категорію організацій шукаєш?",
+        }
+        mock_llm.detect_pipeline.return_value = "process_message"
+
+        await pipeline_process_message(
+            user_id=42,
+            chat_id=999,
+            chat_type="private",
+            message_text="питання: як допомогти тваринкам",
+        )
+
+        call_kwargs = mock_queries.save_message.call_args.kwargs
+        self.assertEqual(call_kwargs.get("pipeline_used"), "process_message")
+
 
 class TestShowOrgsPipeline(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -204,18 +260,6 @@ class TestShowOrgsPipeline(unittest.IsolatedAsyncioTestCase):
         mock_queries.save_message.assert_not_called()
 
 
-class TestShowOrgsClarification(unittest.TestCase):
-    def test_delegates_to_llm_detector(self):
-        mock_llm.needs_org_category_clarification.return_value = False
-        self.assertFalse(_needs_org_category_clarification("організації освіти"))
-        mock_llm.needs_org_category_clarification.assert_called_with("організації освіти")
-
-    def test_detector_failure_falls_back_to_clarification(self):
-        mock_llm.needs_org_category_clarification.side_effect = RuntimeError("boom")
-        self.assertTrue(_needs_org_category_clarification("покажи організації"))
-        mock_llm.needs_org_category_clarification.side_effect = None
-
-
 class TestStyleResolution(unittest.IsolatedAsyncioTestCase):
     """Test that style priority is: user > chat > default."""
 
@@ -231,11 +275,13 @@ class TestStyleResolution(unittest.IsolatedAsyncioTestCase):
         mock_queries.find_orgs_by_embedding.return_value = []
         mock_queries.find_projects_by_embedding.return_value = []
         mock_queries.save_message.return_value = None
+        mock_queries.get_last_message_context.return_value = None
         mock_queries.link_problem_solution.return_value = None
         mock_queries.get_chat_history.return_value = []
         mock_llm.extract_problems_and_solutions.return_value = {
             "problems": [], "solutions": []
         }
+        mock_llm.detect_pipeline.return_value = "process_message"
         mock_llm.get_embedding.return_value = [0.1] * 1536
         mock_llm.generate_reply.return_value = "reply"
         mock_llm.rewrite_reply_with_style.return_value = "styled reply"

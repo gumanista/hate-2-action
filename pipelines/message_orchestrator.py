@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 PIPELINE_FACTORY = PipelineFactory()
 INTENT_PIPELINES = PIPELINE_FACTORY.intents
+
+
 def _apply_style_filter(reply: str, style: str, pipeline_name: str) -> str:
     if not reply:
         return reply
@@ -30,19 +32,54 @@ def _apply_style_filter(reply: str, style: str, pipeline_name: str) -> str:
     except Exception as e:
         logger.warning(f"Style filter failed for pipeline={pipeline_name}: {e}")
         return reply
-def _detect_pipeline_name(message_text: str) -> str:
-    """Safely detect the intent pipeline. Fall back to process_message."""
+
+
+def _detect_pipeline_name(
+    message_text: str,
+    last_message_context: dict | None = None,
+) -> str:
+    """Safely detect the intent pipeline. Fall back to problem_solution."""
     try:
-        detected = llm.detect_pipeline(message_text)
+        detected = llm.detect_pipeline(
+            message_text,
+            previous_message=(
+                last_message_context.get("message_text")
+                if isinstance(last_message_context, dict)
+                else None
+            ),
+            previous_reply=(
+                last_message_context.get("reply_text")
+                if isinstance(last_message_context, dict)
+                else None
+            ),
+            previous_pipeline=(
+                last_message_context.get("pipeline_used")
+                if isinstance(last_message_context, dict)
+                else None
+            ),
+        )
     except Exception as e:
         logger.warning(
-            f"Pipeline detection failed, defaulting to process_message: {e}"
+            f"Pipeline detection failed, defaulting to problem_solution: {e}"
         )
-        return "process_message"
+        return "problem_solution"
     if not isinstance(detected, str):
-        return "process_message"
+        return "problem_solution"
     detected = detected.strip().lower()
-    return detected if detected in INTENT_PIPELINES else "process_message"
+    if detected == "process_message":
+        detected = "problem_solution"
+    return detected if detected in INTENT_PIPELINES else "problem_solution"
+
+
+def _get_last_message_context(chat_id: int, user_id: int) -> dict | None:
+    try:
+        context = queries.get_last_message_context(chat_id, user_id)
+    except Exception as e:
+        logger.warning(f"Could not load last message context for routing: {e}")
+        return None
+    return context if isinstance(context, dict) else None
+
+
 async def pipeline_process_message(
     user_id: int,
     chat_id: int,
@@ -60,11 +97,15 @@ async def pipeline_process_message(
     try:
         queries.get_or_create_user(user_id)
         queries.get_or_create_chat(chat_id, chat_type)
+        last_message_context = _get_last_message_context(chat_id, user_id)
         pipeline_name = (
             forced_pipeline.strip().lower()
             if isinstance(forced_pipeline, str)
             and forced_pipeline.strip().lower() in INTENT_PIPELINES
-            else _detect_pipeline_name(message_text)
+            else _detect_pipeline_name(
+                message_text=message_text,
+                last_message_context=last_message_context,
+            )
         )
         logger.info(f"Detected pipeline: {pipeline_name} for user {user_id}")
         style = resolve_style(user_id, chat_id)
@@ -93,5 +134,5 @@ async def pipeline_process_message(
         return reply
 
     except Exception as e:
-        logger.error(f"process_message pipeline error: {e}", exc_info=True)
+        logger.error(f"problem_solution pipeline error: {e}", exc_info=True)
         return "⚠️ Під час обробки повідомлення сталася помилка. Спробуй ще раз."

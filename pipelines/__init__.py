@@ -17,7 +17,6 @@ from .pipeline_factory import (
     START_TEXT,
     pipeline_about_me,
     pipeline_start,
-    ORG_CATEGORY_CLARIFICATION_TEXT,
 )
 from .problem_solution import pipeline_problem_solution
 from .show_organizations import pipeline_show_orgs
@@ -33,5 +32,4 @@ __all__ = [
     "STYLE_LABELS_UA",
     "ABOUT_TEXT",
     "START_TEXT",
-    "ORG_CATEGORY_CLARIFICATION_TEXT",
 ]

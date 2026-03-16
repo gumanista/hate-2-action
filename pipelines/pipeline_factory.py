@@ -6,7 +6,6 @@ Purpose:
 - Keep pipeline-specific behavior out of message orchestrator routing glue.
 """
 
-import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable
@@ -38,13 +37,6 @@ START_TEXT = (
     "Або скористайся /orgs для пошуку організацій, /style для зміни тону, "
     "або /about щоб дізнатись більше."
 )
-
-ORG_CATEGORY_CLARIFICATION_TEXT = (
-    "🏢 Організації якої категорії тебе цікавлять?\n\n"
-    "Напиши тему, наприклад: клімат, корупція, освіта, здоровʼя."
-)
-
-logger = logging.getLogger(__name__)
 def pipeline_about_me() -> str:
     return ABOUT_TEXT
 def pipeline_start() -> str:
@@ -92,25 +84,9 @@ class ChangeStylePipeline(BasePipeline):
             pipeline_used=self.name,
             apply_style_filter=False,
         )
-def _needs_org_category_clarification(message_text: str) -> bool:
-    """Detect if user asked to find orgs but did not provide a clear category."""
-    if not isinstance(message_text, str) or not message_text.strip():
-        return True
-
-    try:
-        return llm.needs_org_category_clarification(message_text)
-    except Exception as e:
-        logger.warning(f"Org category clarification detection failed: {e}")
-        return True
 class ShowOrgsPipeline(BasePipeline):
     name = "show_orgs"
     async def run(self, ctx: PipelineContext) -> PipelineResult:
-        if _needs_org_category_clarification(ctx.message_text):
-            return PipelineResult(
-                reply=ORG_CATEGORY_CLARIFICATION_TEXT,
-                pipeline_used=self.name,
-                apply_style_filter=False,
-            )
         reply = await pipeline_show_orgs(
             ctx.user_id,
             ctx.chat_id,
@@ -122,7 +98,7 @@ class ShowOrgsPipeline(BasePipeline):
 
 
 class ProcessMessagePipeline(BasePipeline):
-    name = "process_message"
+    name = "problem_solution"
 
     async def run(self, ctx: PipelineContext) -> PipelineResult:
         reply = await pipeline_problem_solution(
@@ -140,11 +116,15 @@ class PipelineFactory:
             "start": StartPipeline,
             "change_style": ChangeStylePipeline,
             "show_orgs": ShowOrgsPipeline,
+            "problem_solution": ProcessMessagePipeline,
             "process_message": ProcessMessagePipeline,
         }
     @property
     def intents(self) -> set[str]:
         return set(self._registry.keys())
     def create(self, pipeline_name: str) -> BasePipeline:
-        builder = self._registry.get(pipeline_name, self._registry["process_message"])
+        builder = self._registry.get(
+            pipeline_name,
+            self._registry["problem_solution"],
+        )
         return builder()
