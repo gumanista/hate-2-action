@@ -12,37 +12,41 @@ Design notes:
 - This module is intentionally stateless beyond global client/model constants.
 - Each function exposes one narrow model interaction and returns parsed Python data.
 """
-
-# Standard library import for environment variable access.
 import os
-# Standard library import for JSON parsing.
 import json
-# Official OpenAI Python SDK client.
 from openai import OpenAI
-# Utility to load environment variables from `.env`.
 from dotenv import load_dotenv
-
-# Load `.env` file into process environment.
 load_dotenv()
-
-# Initialize OpenAI client using API key from environment.
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# Embedding model used for semantic search vectors.
 EMBEDDING_MODEL = "text-embedding-3-small"
-# Chat/completions model used for classification and text generation.
 CHAT_MODEL = "gpt-4o-mini"
-
-# Tone presets keyed by style id used across response generation functions.
-STYLE_INSTRUCTIONS = {
-    "polite": "Відповідай лише українською мовою. Тон теплий, ввічливий і підтримувальний.",
-    "funny": "Відповідай лише українською мовою. Додай легкий гумор, але залишайся корисним.",
-    "sarcastic": "Відповідай лише українською мовою. Використовуй стриманий сарказм, але веди користувача до дій.",
-    "normal": "Відповідай лише українською мовою. Тон нейтральний, чіткий і збалансований.",
-    "rude": "Відповідай лише українською мовою. Пиши різко і прямо, з практичними порадами.",
+LANGUAGE_POLICY_UA = (
+    "Відповідай виключно українською мовою. "
+    "Не переходь на інші мови у звичайному тексті. "
+    "Винятки: URL, офіційні назви організацій, технічні команди на кшталт /style_polite."
+)
+STYLE_PROFILES = {
+    "polite": (
+        "Чемний стиль: теплий, ввічливий і підтримувальний тон з емпатією, "
+        "делікатними формулюваннями та спокійною подачею."
+    ),
+    "funny": (
+        "Смішний стиль: легкий дотепний тон із доречним гумором, живою подачею "
+        "та дружньою енергією без втрати практичності."
+    ),
+    "sarcastic": (
+        "Саркастичний стиль: стримана іронія, колюча подача і тверезий погляд "
+        "на проблему, але без образ і приниження."
+    ),
+    "normal": (
+        "Нейтральний стиль: чіткий, збалансований і спокійний тон, фокус на "
+        "структурі, ясності та конкретних кроках."
+    ),
+    "rude": (
+        "Грубуватий стиль: прямий і жорсткий тон у форматі tough-love, мінімум "
+        "дипломатії та максимум конкретики й дій."
+    ),
 }
-
-# Shared structure instruction appended to generation prompts.
 RESPONSE_FORMAT = """
 Дотримуйся структури відповіді:
 1. Валідація — коротко визнай емоції чи занепокоєння користувача.
@@ -50,51 +54,89 @@ RESPONSE_FORMAT = """
 3. Підбадьорення — заверши мотивуючим закликом до дії.
 Відповідь має бути стислою (3-5 речень).
 """
-
-
-# Generate embedding vector for semantic similarity operations.
+def _style_instruction(style: str) -> str:
+    normalized = style.strip().lower() if isinstance(style, str) else "normal"
+    resolved = normalized if normalized in STYLE_PROFILES else "normal"
+    description = STYLE_PROFILES[resolved]
+    return (
+        f"{LANGUAGE_POLICY_UA}\n"
+        f"Активний стиль: {resolved}.\n"
+        f"Опис стилю: {description}"
+    )
 def get_embedding(text: str) -> list[float]:
     """Return a 1536-dim embedding for the given text."""
-    # Call embeddings API with an input cap to avoid oversized payloads.
     response = client.embeddings.create(model=EMBEDDING_MODEL, input=text[:8000])
-    # Return embedding array from first result item.
     return response.data[0].embedding
-
-
-# Classify raw user message into one orchestrator pipeline label.
 def detect_pipeline(message: str) -> str:
-    prompt = f"""Classify this Telegram bot message into exactly ONE of these categories:
-- change_style (user wants to change response style/tone)
-- show_orgs (user wants to find NGOs or organizations)
-- about_me (user asks what the bot is or what it can do)
-- process_message (user is complaining, ranting, or describing a problem)
+    prompt = f"""Classify this Telegram bot message into exactly ONE intent category.
+
+Categories and keyword hints:
+
+1) change_style
+Meaning: user wants to change bot tone, writing style, vibe, wording mode, or response format.
+Keywords/phrases: style, tone, writing style, response style, change style, switch style, set style, rewrite in style, be polite, be funny, be sarcastic, be rude, neutral tone, formal tone, informal tone, less sarcasm, more humor, simple language, коротко, детальніше, простіше, стиль, тон, манера, формат відповіді, перефразуй, зміни стиль, зміни тон, пиши ввічливо, пиши смішно, пиши саркастично, пиши різко, пиши нейтрально, говори простіше, зроби коротше, не жартуй, більше жартів.
+
+2) show_orgs
+Meaning: user wants NGOs/organizations/charities/projects/initiatives, where to apply, where to ask for help, where to volunteer, who can help with an issue.
+Keywords/phrases: NGO, NGOs, organization, organizations, non-profit, nonprofit, charity, charities, foundation, initiative, civil society, volunteer, volunteering, where to go, who can help, contacts, support center, hotline, legal aid, psychological help, shelters, human rights group, eco group, anti-corruption group, donor, grant, activism group, community group, НГО, громадська організація, організація, фонд, благодійність, ініціатива, волонтери, волонтерство, куди звернутися, хто допоможе, знайди організації, покажи організації, підбери НГО, контакти організацій, проєкти, активізм.
+
+3) about_me
+Meaning: user asks about bot identity, purpose, capabilities, limitations, how it works, what it can do.
+Keywords/phrases: who are you, what are you, what is this bot, what can you do, help, commands, features, capabilities, how to use, how you work, what is Hate-2-Action, instructions, about bot, your role, your mission, хто ти, що ти вмієш, що це за бот, як користуватись, як ти працюєш, які команди, можливості бота, про бота, твоя роль, твоя місія, навіщо цей бот.
+
+4) process_message
+Meaning: user describes a personal/social problem, frustration, rant, complaint, conflict, injustice, anger, fear, stress, burnout, helplessness, asks for practical advice or actions.
+Keywords/phrases: problem, issue, complaint, rant, angry, upset, frustrated, tired, hopeless, stuck, conflict, injustice, corruption, discrimination, violence, stress, anxiety, burnout, depression feelings, overwhelmed, what should I do, help me act, action plan, next steps, проблема, скарга, обурення, бісить, злість, несправедливість, корупція, дискримінація, насильство, тривога, стрес, вигорання, безсилля, не знаю що робити, порадь кроки, що робити далі.
+
+Routing rules:
+- Return exactly one category name: change_style, show_orgs, about_me, or process_message.
+- If style-change intent is explicit, choose change_style even if other topics appear.
+- If user asks primarily for organizations/where to apply/help contacts, choose show_orgs.
+- If user asks mainly about bot identity/capabilities, choose about_me.
+- Otherwise default to process_message.
+- Treat minor typos, mixed alphabets, transliteration, and spelling noise as intended words.
 
 Message: "{message}"
 
 Respond with only the category name, nothing else."""
-    # Request deterministic classification from chat model.
     response = client.chat.completions.create(
-        # Use shared chat model constant.
         model=CHAT_MODEL,
-        # Send a single user message containing the task prompt.
         messages=[{"role": "user", "content": prompt}],
-        # Small token budget because output is one label.
         max_tokens=20,
-        # Zero temperature for stable class selection.
         temperature=0,
     )
-    # Normalize model output for robust comparison.
     result = response.choices[0].message.content.strip().lower()
-    # Set of accepted orchestrator labels.
     valid = {"change_style", "show_orgs", "about_me", "process_message"}
-    # Return valid label or safe fallback.
     return result if result in valid else "process_message"
+def needs_org_category_clarification(message: str) -> bool:
+    """Return True when org-search intent is present but topic/category is missing."""
+    prompt = f"""Ти визначаєш, чи потрібно попросити користувача уточнити категорію
+для пошуку організацій.
 
+Поверни ТІЛЬКИ одне слово:
+- clarify: якщо у повідомленні немає конкретної теми/категорії (наприклад, лише "покажи організації")
+- proceed: якщо є конкретна тема (наприклад, "організації проти корупції", "climate NGOs", "освіта")
 
-# Extract structured problem and solution entities from complaint text.
+Правила:
+- Враховуй дрібні помилки, опечатки, трансліт і змішані алфавіти.
+- Якщо не впевнений, обирай clarify.
+
+Повідомлення: "{message}"
+"""
+    response = client.chat.completions.create(
+        model=CHAT_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=10,
+        temperature=0,
+    )
+    result = response.choices[0].message.content.strip().lower()
+    if result == "proceed":
+        return False
+    if result == "clarify":
+        return True
+    return True
 def extract_problems_and_solutions(message: str) -> dict:
     """Extract problems and solutions from a user complaint using LLM."""
-    # Prompt model to return strict JSON schema with `problems` and `solutions` arrays.
     prompt = f"""Analyze this message and extract:
 1. The core problems/issues the user is complaining about (1-3 specific problems)
 2. General solution concepts that could address those problems (1-3 solutions)
@@ -110,69 +152,42 @@ Respond in valid JSON with this exact structure:
     {{"name": "short solution name", "context": "brief context", "content": "detailed description"}}
   ]
 }}"""
-    # Request JSON-formatted extraction from model.
     response = client.chat.completions.create(
-        # Use shared chat model constant.
         model=CHAT_MODEL,
-        # Send extraction prompt as user message.
         messages=[{"role": "user", "content": prompt}],
-        # Provide enough tokens for a small structured JSON response.
         max_tokens=600,
-        # Low temperature for stable schema adherence.
         temperature=0.2,
-        # Enforce JSON object format from model API.
         response_format={"type": "json_object"},
     )
-    # Parse JSON string into Python dictionary.
     return json.loads(response.choices[0].message.content)
-
-
-# Generate full response for problem-solution flow with recommendations.
 def generate_reply(
-    # Original user message text.
     user_message: str,
-    # Active response style id.
     style: str,
-    # Ranked organization candidates.
     orgs: list[dict],
-    # Ranked project candidates.
     projects: list[dict],
-    # Optional recent conversation history.
     history: list[dict] = None,
 ) -> str:
     """Generate a styled reply with org/project recommendations."""
-    # Resolve style instruction with fallback to neutral style.
-    style_instruction = STYLE_INSTRUCTIONS.get(style, STYLE_INSTRUCTIONS["normal"])
-
-    # Render up to 3 organization candidates as bullet list for prompt context.
+    style_instruction = _style_instruction(style)
     org_list = "\n".join(
         f"- {o['name']}: {o.get('description', '')} ({o.get('website', '')})"
         for o in orgs[:3]
     )
-    # Render up to 3 project candidates as bullet list for prompt context.
     proj_list = "\n".join(
         f"- {p['name']} від {p.get('org_name', 'невідома організація')}: {p.get('description', '')} ({p.get('org_website', '')})"
         for p in projects[:3]
     )
-
-    # Default empty history text when no chat context is available.
     history_text = ""
-    # Include the last up to 3 dialogue turns when history exists.
     if history:
-        # Build readable context block for the model.
         history_text = "\nОстанній контекст розмови:\n" + "\n".join(
             f"Користувач: {h['message_text']}\nБот: {h['reply_text']}" for h in history[-3:]
         )
-
-    # Construct system prompt defining style, mission, structure, and formatting rules.
     system_prompt = f"""{style_instruction}
 {RESPONSE_FORMAT}
 Ти бот Hate-2-Action. Твоя задача — перетворювати обурення користувача на конкретні дії, рекомендуючи НГО та проєкти.
 Відповідай тільки українською мовою.
 Завжди згадай 2-3 релевантні організації або проєкти зі списку.
 Назви організацій оформлюй як клікабельні Markdown-посилання: [Назва](url)"""
-
-    # Construct user prompt with message, history, and retrieved candidates.
     user_prompt = f"""Повідомлення користувача: "{user_message}"
 {history_text}
 Релевантні організації:
@@ -182,44 +197,28 @@ def generate_reply(
 {proj_list if proj_list else "Конкретних проєктів не знайдено."}
 
 Згенеруй відповідь за схемою: валідація → порада → підбадьорення."""
-
-    # Ask model to generate final reply using two-message prompt setup.
     response = client.chat.completions.create(
-        # Use shared chat model constant.
         model=CHAT_MODEL,
-        # Provide system and user instructions separately.
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        # Response token budget for concise but complete answer.
         max_tokens=400,
-        # Higher temperature for natural conversational output.
         temperature=0.7,
     )
-    # Return trimmed response text.
     return response.choices[0].message.content.strip()
-
-
-# Generate response specifically for organization-category lookup flow.
 def generate_org_reply(query: str, orgs: list[dict], projects: list[dict], style: str) -> str:
     """Generate a reply specifically for the Show Organizations pipeline."""
-    # Resolve style instruction with fallback to neutral style.
-    style_instruction = STYLE_INSTRUCTIONS.get(style, STYLE_INSTRUCTIONS["normal"])
-    # Render up to 5 organization candidates for prompt context.
+    style_instruction = _style_instruction(style)
     org_list = "\n".join(
         f"- {o['name']}: {o.get('description', '')} ({o.get('website', '')})"
         for o in orgs[:5]
     )
-    # Render up to 5 project candidates for prompt context.
     proj_list = "\n".join(
         f"- {p['name']} від {p.get('org_name', 'Н/Д')}: {p.get('description', '')} ({p.get('org_website', '')})"
         for p in projects[:5]
     )
-
-    # Build single prompt instructing summary + actionable guidance.
-    prompt = f"""{style_instruction}
-Користувач шукає організації за темою: "{query}"
+    user_prompt = f"""Користувач шукає організації за темою: "{query}"
 
 Ось релевантні організації:
 {org_list if org_list else "Конкретних організацій не знайдено."}
@@ -227,95 +226,75 @@ def generate_org_reply(query: str, orgs: list[dict], projects: list[dict], style
 І релевантні проєкти:
 {proj_list if proj_list else "Конкретних проєктів не знайдено."}
 
-Відповідай тільки українською мовою.
 Зроби корисний підсумок для 2-4 найрелевантніших організацій і як користувач може їх підтримати.
 Використовуй Markdown-посилання: [Назва](url). Пиши стисло та практично."""
-
-    # Request generated answer from model.
     response = client.chat.completions.create(
-        # Use shared chat model constant.
         model=CHAT_MODEL,
-        # Send single user prompt.
-        messages=[{"role": "user", "content": prompt}],
-        # Response token budget.
+        messages=[
+            {"role": "system", "content": style_instruction},
+            {"role": "user", "content": user_prompt},
+        ],
         max_tokens=400,
-        # Creative but controlled tone.
         temperature=0.7,
     )
-    # Return trimmed generated text.
     return response.choices[0].message.content.strip()
-
-
-# Detect requested style name from free-form user text.
 def detect_style_from_message(message: str) -> str | None:
     """Try to detect which style the user is requesting."""
-    # Build classification prompt with fixed style options.
-    prompt = f"""The user wants to change the response style of a bot. Which style are they asking for?
-Options: polite, funny, sarcastic, normal, rude
+    prompt = f"""Визнач, який стиль відповіді просить користувач.
+Поверни ТІЛЬКИ одне слово: polite, funny, sarcastic, normal, rude, або unknown.
 
-Message: "{message}"
+Варіанти стилів і сигнали:
+- polite: чемний, ввічливий, теплий, підтримувальний тон.
+  Ключові слова: будь ласка, дякую, ввічливо, тактовно, делікатно, з повагою, м'яко, коректно, politely, kind.
+- funny: смішний, жартівливий, дотепний, легкий, playful тон.
+  Ключові слова: жарт, дотеп, мем, смішно, кумедно, весело, з гумором, підкол, funny, humor.
+- sarcastic: саркастичний, іронічний, сухий, колючий тон.
+  Ключові слова: сарказм, іронія, колючо, їдко, гостро, без ілюзій, сухий гумор, sarcastic, snarky.
+- normal: нейтральний, спокійний, збалансований, чіткий тон.
+  Ключові слова: нейтрально, звичайно, стандартно, спокійно, без жартів, по суті, normal, neutral.
+- rude: грубуватий, різкий, прямий, tough-love тон.
+  Ключові слова: грубо, жорстко, прямо, без церемоній, різко, по факту, без прикрас, rude, blunt.
 
-Respond with only the style name, or "unknown" if unclear."""
-    # Request deterministic style classification.
+Правила:
+- Якщо є явний запит на зміну стилю, обери найближчий стиль.
+- Якщо стиль неочевидний, поверни unknown.
+- Не додавай жодних пояснень.
+
+Повідомлення: "{message}" """
     response = client.chat.completions.create(
-        # Use shared chat model constant.
         model=CHAT_MODEL,
-        # Send style detection prompt.
         messages=[{"role": "user", "content": prompt}],
-        # Very small token budget for one label.
         max_tokens=10,
-        # Zero temperature for stable output.
         temperature=0,
     )
-    # Normalize output label.
     result = response.choices[0].message.content.strip().lower()
-    # Return style when recognized, else `None`.
     return (
-        result
-        if result in {"polite", "funny", "sarcastic", "normal", "rude"}
-        else None
+        result if result in set(STYLE_PROFILES.keys()) else None
     )
-
-
-# Expand short category query into richer semantic-search text.
 def enrich_query(query: str) -> str:
     """Expand a short query with keywords for better semantic search (max 800 chars)."""
-    # Build prompt asking model to add keywords/context while staying concise.
     prompt = f"""Expand this query with relevant keywords and context for semantic search. Max 800 characters.
 Query: "{query}"
 Return only the enriched text."""
-    # Request expanded query text from model.
     response = client.chat.completions.create(
-        # Use shared chat model constant.
         model=CHAT_MODEL,
-        # Send enrichment prompt.
         messages=[{"role": "user", "content": prompt}],
-        # Token budget suitable for short expansion.
         max_tokens=150,
-        # Low creativity for focused keyword expansion.
         temperature=0.3,
     )
-    # Return enriched text trimmed to hard 800-char cap.
     return response.choices[0].message.content.strip()[:800]
-
-
-# Rewrite already-generated pipeline response into the requested tone.
 def rewrite_reply_with_style(text: str, style: str) -> str:
     """Apply style as a post-generation filter while preserving content."""
-    # Keep neutral text unchanged.
     if style == "normal":
         return text
-    # Resolve instruction and fall back to normal when style is unknown.
-    style_instruction = STYLE_INSTRUCTIONS.get(style, STYLE_INSTRUCTIONS["normal"])
-    # Prompt model to rewrite tone without changing facts/links.
+    style_instruction = _style_instruction(style)
     system_prompt = (
         f"{style_instruction}\n"
         "Перепиши текст у заданому тоні. Не вигадуй нових фактів. "
-        "Збережи Markdown-посилання, назви організацій/проєктів і практичні кроки."
+        "Збережи Markdown-посилання, назви організацій/проєктів і практичні кроки. "
+        "Фінальний текст поверни лише українською мовою."
     )
-    # Provide original output as the source text for rewrite.
     user_prompt = f"Оригінальний текст:\n{text}\n\nПоверни тільки фінальний переписаний текст."
-    # Ask model to apply style filter.
     response = client.chat.completions.create(
         model=CHAT_MODEL,
         messages=[
@@ -325,5 +304,4 @@ def rewrite_reply_with_style(text: str, style: str) -> str:
         max_tokens=500,
         temperature=0.3,
     )
-    # Return rewritten text.
     return response.choices[0].message.content.strip()

@@ -28,9 +28,6 @@ def db_cursor():
         cursor.close()
         conn.close()
 
-
-# ── Users ────────────────────────────────────────────────────────────────────
-
 def get_or_create_user(user_id: int, username: str = None, first_name: str = None) -> dict:
     with db_cursor() as cur:
         cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
@@ -58,9 +55,6 @@ def set_user_style(user_id: int, style: str):
             (style, user_id),
         )
 
-
-# ── Chats ────────────────────────────────────────────────────────────────────
-
 def get_or_create_chat(chat_id: int, chat_type: str) -> dict:
     with db_cursor() as cur:
         cur.execute("SELECT * FROM chats WHERE chat_id = %s", (chat_id,))
@@ -79,9 +73,6 @@ def get_chat_style(chat_id: int) -> str | None:
         cur.execute("SELECT response_style FROM chats WHERE chat_id = %s", (chat_id,))
         row = cur.fetchone()
         return row["response_style"] if row else None
-
-
-# ── Messages ─────────────────────────────────────────────────────────────────
 
 def save_message(
     chat_id: int,
@@ -118,13 +109,9 @@ def get_chat_history(chat_id: int, user_id: int = None, limit: int = 10) -> list
             )
         return [dict(r) for r in cur.fetchall()][::-1]
 
-
-# ── Problems & Solutions ──────────────────────────────────────────────────────
-
 def upsert_problem(name: str, context: str, content: str, embedding: list[float]) -> int:
     """Insert a problem if cosine similarity to existing ones is below threshold."""
     with db_cursor() as cur:
-        # Check for near-duplicate using pgvector cosine similarity
         embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
         cur.execute(
             """SELECT problem_id, 1 - (embedding <=> %s::vector) AS similarity
@@ -176,9 +163,6 @@ def link_problem_solution(problem_id: int, solution_id: int, score: float):
                ON CONFLICT (problem_id, solution_id) DO UPDATE SET similarity_score = EXCLUDED.similarity_score""",
             (problem_id, solution_id, score),
         )
-
-
-# ── Organization/Project lookup ───────────────────────────────────────────────
 
 def find_orgs_by_embedding(embedding: list[float], top_n: int = 5) -> list[dict]:
     embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"

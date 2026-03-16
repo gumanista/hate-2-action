@@ -16,8 +16,6 @@ from unittest.mock import patch, MagicMock, AsyncMock
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
-
-# ── Mock DB and LLM before importing pipelines ────────────────────────────────
 mock_queries = MagicMock()
 mock_llm = MagicMock()
 sys.modules["db.queries"] = mock_queries
@@ -207,14 +205,15 @@ class TestShowOrgsPipeline(unittest.IsolatedAsyncioTestCase):
 
 
 class TestShowOrgsClarification(unittest.TestCase):
-    def test_single_topic_word_does_not_require_clarification(self):
-        self.assertFalse(_needs_org_category_clarification("освіта"))
-
-    def test_generic_request_requires_clarification(self):
-        self.assertTrue(_needs_org_category_clarification("покажи організації"))
-
-    def test_org_request_with_topic_does_not_require_clarification(self):
+    def test_delegates_to_llm_detector(self):
+        mock_llm.needs_org_category_clarification.return_value = False
         self.assertFalse(_needs_org_category_clarification("організації освіти"))
+        mock_llm.needs_org_category_clarification.assert_called_with("організації освіти")
+
+    def test_detector_failure_falls_back_to_clarification(self):
+        mock_llm.needs_org_category_clarification.side_effect = RuntimeError("boom")
+        self.assertTrue(_needs_org_category_clarification("покажи організації"))
+        mock_llm.needs_org_category_clarification.side_effect = None
 
 
 class TestStyleResolution(unittest.IsolatedAsyncioTestCase):

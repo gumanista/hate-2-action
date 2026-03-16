@@ -6,7 +6,7 @@ Purpose:
 - Keep pipeline-specific behavior out of message orchestrator routing glue.
 """
 
-import re
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable
@@ -16,8 +16,6 @@ from utils import llm
 from .change_style import pipeline_change_style
 from .problem_solution import pipeline_problem_solution
 from .show_organizations import pipeline_show_orgs
-
-# Static text response for the about pipeline.
 ABOUT_TEXT = (
     "👋 *Hate-2-Action Bot*\n\n"
     "Перетворюю твоє обурення на дію! 💪\n\n"
@@ -41,18 +39,16 @@ START_TEXT = (
     "або /about щоб дізнатись більше."
 )
 
+ORG_CATEGORY_CLARIFICATION_TEXT = (
+    "🏢 Організації якої категорії тебе цікавлять?\n\n"
+    "Напиши тему, наприклад: клімат, корупція, освіта, здоровʼя."
+)
 
-# Public helper that returns static about text.
+logger = logging.getLogger(__name__)
 def pipeline_about_me() -> str:
     return ABOUT_TEXT
-
-
-# Public helper that returns static start text.
 def pipeline_start() -> str:
     return START_TEXT
-
-
-# Define immutable context object that all pipeline handlers receive.
 @dataclass(slots=True, frozen=True)
 class PipelineContext:
     user_id: int
@@ -60,65 +56,29 @@ class PipelineContext:
     chat_type: str
     message_text: str
     tg_message_id: int | None = None
-
-
-# Define immutable result object returned by each concrete pipeline.
 @dataclass(slots=True, frozen=True)
 class PipelineResult:
-    # User-facing text produced by pipeline.
     reply: str
-    # Canonical pipeline identifier used in analytics/persistence.
     pipeline_used: str
-    # Whether orchestrator should apply global style rewrite post-processing.
     apply_style_filter: bool = True
-
-
-# Define common interface that all factory pipelines must implement.
 class BasePipeline(ABC):
-    # Canonical pipeline name each implementation declares.
     name: str
-
-    # Abstract execution contract implemented by concrete pipelines.
     @abstractmethod
     async def run(self, ctx: PipelineContext) -> PipelineResult:
-        # Force subclasses to provide implementation.
         raise NotImplementedError
-
-
-# Concrete pipeline for static about response.
 class AboutPipeline(BasePipeline):
-    # Name used by router/factory for this handler.
     name = "about_me"
-
-    # Execute about handler with shared pipeline interface.
     async def run(self, ctx: PipelineContext) -> PipelineResult:
-        # Mark input as intentionally unused for this static response.
         _ = ctx
-        # Return static about text with pipeline metadata.
         return PipelineResult(reply=pipeline_about_me(), pipeline_used=self.name)
-
-
-# Concrete pipeline for static start response.
 class StartPipeline(BasePipeline):
-    # Name used by router/factory for this handler.
     name = "start"
-
-    # Execute start handler with shared pipeline interface.
     async def run(self, ctx: PipelineContext) -> PipelineResult:
-        # Mark input as intentionally unused for this static response.
         _ = ctx
-        # Return static start text with pipeline metadata.
         return PipelineResult(reply=pipeline_start(), pipeline_used=self.name)
-
-
-# Concrete pipeline for style configuration messages.
 class ChangeStylePipeline(BasePipeline):
-    # Name used by router/factory for this handler.
     name = "change_style"
-
-    # Execute style-change flow and return confirmation/help text.
     async def run(self, ctx: PipelineContext) -> PipelineResult:
-        # Extract requested style intent from user message when possible.
         requested_style = llm.detect_style_from_message(ctx.message_text)
         reply = await pipeline_change_style(
             ctx.user_id,
@@ -127,80 +87,30 @@ class ChangeStylePipeline(BasePipeline):
             message=ctx.message_text,
             requested_style=requested_style,
         )
-        # Return pipeline result with style filter disabled to avoid rewriting config text.
         return PipelineResult(
             reply=reply,
             pipeline_used=self.name,
             apply_style_filter=False,
         )
-
-
-# Helper that decides whether show-orgs request is too vague and needs clarification.
 def _needs_org_category_clarification(message_text: str) -> bool:
     """Detect if user asked to find orgs but did not provide a clear category."""
-    # Normalize punctuation/case to simplify token-level heuristics.
-    cleaned = re.sub(r"[^\w\s]", " ", message_text.lower())
-    # Tokenize on whitespace and discard empty tokens.
-    tokens = [t for t in cleaned.split() if t]
-    # Empty input cannot be searched meaningfully.
-    if not tokens:
+    if not isinstance(message_text, str) or not message_text.strip():
         return True
 
-    # Generic command tokens that indicate "find orgs" intent without topic detail.
-    generic = {
-        # English generic query tokens.
-        "show",
-        "find",
-        "org",
-        "orgs",
-        "organization",
-        "organizations",
-        "ngo",
-        "ngos",
-        "category",
-        "topic",
-        "please",
-        # Ukrainian generic query tokens.
-        "знайди",
-        "покажи",
-        "які",
-        "яка",
-        "якої",
-        "мені",
-        "тема",
-        "теми",
-        "категорія",
-        "категорії",
-        "організація",
-        "організації",
-        "організацію",
-        "організацій",
-        "нго",
-    }
-    # Clarify when every token is generic (meaning no domain/category token found).
-    return all(token in generic for token in tokens)
-
-
-# Concrete pipeline for organization lookup flow.
+    try:
+        return llm.needs_org_category_clarification(message_text)
+    except Exception as e:
+        logger.warning(f"Org category clarification detection failed: {e}")
+        return True
 class ShowOrgsPipeline(BasePipeline):
-    # Name used by router/factory for this handler.
     name = "show_orgs"
-
-    # Execute show-orgs flow, including ambiguity guard.
     async def run(self, ctx: PipelineContext) -> PipelineResult:
-        # Ask for category detail before retrieval when user query is too generic.
         if _needs_org_category_clarification(ctx.message_text):
             return PipelineResult(
-                # Clarification prompt shown to user.
-                reply=(
-                    "🏢 Організації якої категорії тебе цікавлять?\n\n"
-                    "Напиши тему, наприклад: клімат, корупція, освіта, здоровʼя."
-                ),
-                # Keep pipeline marker as show_orgs for analytics continuity.
+                reply=ORG_CATEGORY_CLARIFICATION_TEXT,
                 pipeline_used=self.name,
+                apply_style_filter=False,
             )
-
-        # Delegate to existing organizations retrieval pipeline.
         reply = await pipeline_show_orgs(
             ctx.user_id,
             ctx.chat_id,
@@ -219,16 +129,10 @@ class ProcessMessagePipeline(BasePipeline):
             ctx.user_id,
             ctx.chat_id,
             ctx.chat_type,
-            # Forward original user message text.
             ctx.message_text,
-            # Forward optional Telegram message id for traceability.
             tg_message_id=ctx.tg_message_id,
         )
-        # Return generated recommendation reply with pipeline metadata.
         return PipelineResult(reply=reply, pipeline_used=self.name)
-
-
-# Factory responsible for creating concrete pipeline handlers by name.
 class PipelineFactory:
     def __init__(self):
         self._registry: dict[str, Callable[[], BasePipeline]] = {
@@ -238,13 +142,9 @@ class PipelineFactory:
             "show_orgs": ShowOrgsPipeline,
             "process_message": ProcessMessagePipeline,
         }
-
-    # Expose available intents for validation and detection guards.
     @property
     def intents(self) -> set[str]:
         return set(self._registry.keys())
-
-    # Create a concrete pipeline instance by name, with safe default fallback.
     def create(self, pipeline_name: str) -> BasePipeline:
         builder = self._registry.get(pipeline_name, self._registry["process_message"])
         return builder()

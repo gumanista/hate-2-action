@@ -6,8 +6,6 @@ Usage:
   python init_db.py           # create tables + seed data only
   python init_db.py --embed   # also generate embeddings and similarity tables
 """
-
-#TODO: ORM frameworks like SQLAlchemy etc
 import os
 import sys
 import argparse
