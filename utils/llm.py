@@ -15,9 +15,11 @@ Design notes:
 import os
 import json
 from openai import OpenAI
+from openai import OpenAIError
 from dotenv import load_dotenv
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+_client: OpenAI | None = None
 EMBEDDING_MODEL = "text-embedding-3-small"
 CHAT_MODEL = "gpt-4o-mini"
 LANGUAGE_POLICY_UA = (
@@ -63,9 +65,28 @@ def _style_instruction(style: str) -> str:
         f"Активний стиль: {resolved}.\n"
         f"Опис стилю: {description}"
     )
+
+
+def _get_client() -> OpenAI:
+    global _client
+    if _client is not None:
+        return _client
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY environment variable not set")
+
+    try:
+        _client = OpenAI(api_key=api_key)
+    except OpenAIError as exc:
+        raise RuntimeError("Failed to initialize OpenAI client") from exc
+
+    return _client
+
+
 def get_embedding(text: str) -> list[float]:
     """Return a 1536-dim embedding for the given text."""
-    response = client.embeddings.create(model=EMBEDDING_MODEL, input=text[:8000])
+    response = _get_client().embeddings.create(model=EMBEDDING_MODEL, input=text[:8000])
     return response.data[0].embedding
 
 def detect_pipeline(
@@ -121,7 +142,7 @@ def detect_pipeline(
 "{message}"
 
 Відповідай тільки назвою пайплайна без пояснень."""
-    response = client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=20,
@@ -149,7 +170,7 @@ Respond in valid JSON with this exact structure:
     {{"name": "short solution name", "context": "brief context", "content": "detailed description"}}
   ]
 }}"""
-    response = client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=600,
@@ -194,7 +215,7 @@ def generate_reply(
 {proj_list if proj_list else "Конкретних проєктів не знайдено."}
 
 Згенеруй відповідь за схемою: валідація → порада → підбадьорення."""
-    response = client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[
             {"role": "system", "content": system_prompt},
@@ -292,7 +313,7 @@ def rewrite_reply_with_style(text: str, style: str) -> str:
         "Фінальний текст поверни лише українською мовою."
     )
     user_prompt = f"Оригінальний текст:\n{text}\n\nПоверни тільки фінальний переписаний текст."
-    response = client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[
             {"role": "system", "content": system_prompt},

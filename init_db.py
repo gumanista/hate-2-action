@@ -12,12 +12,12 @@ import argparse
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
+from db.config import DEFAULT_DATABASE_URL, get_database_url
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 load_dotenv()
-DEFAULT_DATABASE_URL = "postgresql://hate2action:hate2action@localhost:5433/hate2action"
-DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
+DATABASE_URL = get_database_url(DEFAULT_DATABASE_URL)
 
 
 def run_sql_file(conn, path: str):

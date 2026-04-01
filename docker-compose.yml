@@ -1,7 +1,6 @@
 services:
   db:
     image: pgvector/pgvector:pg16
-    container_name: hate2action_db
     environment:
       POSTGRES_DB: hate2action
       POSTGRES_USER: hate2action
@@ -20,18 +19,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hate2action_bot
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://hate2action:hate2action@db:5432/hate2action
+      APP_MODE: polling
+      DATABASE_URL: ${DATABASE_URL:-postgresql://hate2action:hate2action@db:5432/hate2action}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-    volumes:
-      - .:/app
-    working_dir: /app
-    command: python bot/main.py
+    command: python -m bot.main
 
 volumes:
   pgdata:

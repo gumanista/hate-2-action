@@ -9,3 +9,7 @@ __pycache__/
 .venv/
 .env/
 pgdata/
+tests/
+*.csv
+*.pdf
+todo.md

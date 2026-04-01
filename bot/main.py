@@ -32,14 +32,14 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+load_dotenv()
+
 from pipelines import (
     pipeline_process_message,
     STYLES,
     STYLE_LABELS_UA,
 )
 from db import queries
-
-load_dotenv()
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
@@ -52,6 +52,37 @@ ORG_SEARCH_PROMPT = (
     "🏢 Яку тему або категорію організацій шукаєш?\n\n"
     "Напиши, наприклад: корупція, права тварин, освіта, здоровʼя."
 )
+
+REQUIRED_ENV_VARS = (
+    "TELEGRAM_BOT_TOKEN",
+    "OPENAI_API_KEY",
+)
+
+
+def _get_run_mode() -> str:
+    configured_mode = os.getenv("APP_MODE")
+    if configured_mode:
+        return configured_mode.strip().lower()
+
+    if os.getenv("K_SERVICE") or os.getenv("WEBHOOK_URL"):
+        return "webhook"
+
+    return "polling"
+
+
+def _get_webhook_config() -> tuple[int, str, str, str | None]:
+    port = int(os.getenv("PORT", "8080"))
+    base_url = os.getenv("WEBHOOK_URL")
+    if not base_url:
+        raise ValueError("WEBHOOK_URL environment variable not set for webhook mode")
+
+    webhook_path = os.getenv("TELEGRAM_WEBHOOK_PATH", "telegram/webhook").strip("/")
+    if not webhook_path:
+        raise ValueError("TELEGRAM_WEBHOOK_PATH must not be empty")
+
+    webhook_url = f"{base_url.rstrip('/')}/{webhook_path}"
+    secret_token = os.getenv("TELEGRAM_WEBHOOK_SECRET")
+    return port, webhook_path, webhook_url, secret_token
 
 
 def _get_style_keyboard() -> InlineKeyboardMarkup:
@@ -323,10 +354,16 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+def _validate_required_env() -> None:
+    missing_vars = [name for name in REQUIRED_ENV_VARS if not os.getenv(name)]
+    if missing_vars:
+        missing_list = ", ".join(sorted(missing_vars))
+        raise ValueError(f"Missing required environment variables: {missing_list}")
+
+
 def main():
+    _validate_required_env()
     token = os.getenv("TELEGRAM_BOT_TOKEN")
-    if not token:
-        raise ValueError("TELEGRAM_BOT_TOKEN environment variable not set")
 
     app = Application.builder().token(token).build()
 
@@ -351,7 +388,26 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_error_handler(error_handler)
-    logger.info("Starting Hate-2-Action bot...")
+    run_mode = _get_run_mode()
+
+    if run_mode == "webhook":
+        port, webhook_path, webhook_url, secret_token = _get_webhook_config()
+        logger.info(
+            "Starting Hate-2-Action bot in webhook mode on port %s with path /%s",
+            port,
+            webhook_path,
+        )
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=port,
+            url_path=webhook_path,
+            webhook_url=webhook_url,
+            allowed_updates=Update.ALL_TYPES,
+            secret_token=secret_token,
+        )
+        return
+
+    logger.info("Starting Hate-2-Action bot in polling mode...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 if __name__ == "__main__":
     main()
