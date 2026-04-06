@@ -61,8 +61,8 @@ def compute_similarity(conn, src_table, src_id, src_vec_table,
                     (sid, row[tgt_id], row["similarity"]),
                 )
                 inserted += 1
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  ⚠️  Failed to insert link in {link_table} ({src_id}={sid}): {e}")
     conn.commit()
     cur.close()
     print(f"  ✓ Computed {inserted} similarity links in {link_table}")

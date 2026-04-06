@@ -89,6 +89,7 @@ def get_embedding(text: str) -> list[float]:
     response = _get_client().embeddings.create(model=EMBEDDING_MODEL, input=text[:8000])
     return response.data[0].embedding
 
+
 def detect_pipeline(
     message: str,
     previous_message: str | None = None,
@@ -153,6 +154,8 @@ def detect_pipeline(
         result = "problem_solution"
     valid = {"change_style", "show_orgs", "about_me", "problem_solution"}
     return result if result in valid else "problem_solution"
+
+
 def extract_problems_and_solutions(message: str) -> dict:
     """Extract problems and solutions from a user complaint using LLM."""
     prompt = f"""Analyze this message and extract:
@@ -178,6 +181,8 @@ Respond in valid JSON with this exact structure:
         response_format={"type": "json_object"},
     )
     return json.loads(response.choices[0].message.content)
+
+
 def generate_reply(
     user_message: str,
     style: str,
@@ -225,6 +230,8 @@ def generate_reply(
         temperature=0.7,
     )
     return response.choices[0].message.content.strip()
+
+
 def generate_org_reply(query: str, orgs: list[dict], projects: list[dict], style: str) -> str:
     """Generate a reply specifically for the Show Organizations pipeline."""
     style_instruction = _style_instruction(style)
@@ -246,7 +253,7 @@ def generate_org_reply(query: str, orgs: list[dict], projects: list[dict], style
 
 Зроби корисний підсумок для 2-4 найрелевантніших організацій і як користувач може їх підтримати.
 Використовуй Markdown-посилання: [Назва](url). Пиши стисло та практично."""
-    response = client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[
             {"role": "system", "content": style_instruction},
@@ -256,6 +263,8 @@ def generate_org_reply(query: str, orgs: list[dict], projects: list[dict], style
         temperature=0.7,
     )
     return response.choices[0].message.content.strip()
+
+
 def detect_style_from_message(message: str) -> str | None:
     """Try to detect which style the user is requesting."""
     prompt = f"""Визнач, який стиль відповіді просить користувач.
@@ -279,7 +288,7 @@ def detect_style_from_message(message: str) -> str | None:
 - Не додавай жодних пояснень.
 
 Повідомлення: "{message}" """
-    response = client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=10,
@@ -289,18 +298,22 @@ def detect_style_from_message(message: str) -> str | None:
     return (
         result if result in set(STYLE_PROFILES.keys()) else None
     )
+
+
 def enrich_query(query: str) -> str:
     """Expand a short query with keywords for better semantic search (max 800 chars)."""
     prompt = f"""Expand this query with relevant keywords and context for semantic search. Max 800 characters.
 Query: "{query}"
 Return only the enriched text."""
-    response = client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=150,
         temperature=0.3,
     )
     return response.choices[0].message.content.strip()[:800]
+
+
 def rewrite_reply_with_style(text: str, style: str) -> str:
     """Apply style as a post-generation filter while preserving content."""
     if style == "normal":

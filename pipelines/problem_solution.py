@@ -34,6 +34,8 @@ from utils import llm
 logger = logging.getLogger(__name__)
 ORG_PROJECT_LINK_THRESHOLD = 0.3
 PROBLEM_SOLUTION_LINK_THRESHOLD = 0.35
+
+
 def _normalize_entities(items: list[dict] | None) -> list[dict]:
     normalized = []
     for item in items or []:
@@ -50,10 +52,14 @@ def _normalize_entities(items: list[dict] | None) -> list[dict]:
             }
         )
     return normalized
+
+
 def _embedding_text(entity: dict) -> str:
     return (
         f"{entity['name']}: {entity.get('context', '')} {entity.get('content', '')}"
     ).strip()
+
+
 def _cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
     if not vec_a or not vec_b or len(vec_a) != len(vec_b):
         return 0.0
@@ -63,6 +69,8 @@ def _cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
     if norm_a == 0 or norm_b == 0:
         return 0.0
     return dot / (norm_a * norm_b)
+
+
 def _link_solution_to_orgs_and_projects(solution_id: int, embedding: list[float]):
     """Populate organizations_solutions and projects_solutions by vector similarity."""
     orgs_by_emb = queries.find_orgs_by_embedding(embedding, top_n=5)
@@ -86,6 +94,8 @@ def _link_solution_to_orgs_and_projects(solution_id: int, embedding: list[float]
                    VALUES (%s, %s, %s) ON CONFLICT DO NOTHING""",
                 (project["project_id"], solution_id, similarity),
             )
+
+
 def _link_problems_to_solutions(problem_rows: list[dict], solution_rows: list[dict]):
     """Link each problem to its relevant solutions using cosine similarity."""
     if not problem_rows or not solution_rows:

@@ -15,6 +15,8 @@ Main responsibilities:
 import os
 import sys
 import logging
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -64,10 +66,37 @@ def _get_run_mode() -> str:
     if configured_mode:
         return configured_mode.strip().lower()
 
-    if os.getenv("K_SERVICE") or os.getenv("WEBHOOK_URL"):
+    # K_SERVICE alone is not enough — WEBHOOK_URL must also be set.
+    # On Cloud Run, K_SERVICE is always present, but without WEBHOOK_URL the
+    # webhook configuration would crash before the app ever binds to PORT.
+    if os.getenv("WEBHOOK_URL"):
         return "webhook"
 
     return "polling"
+
+
+def _start_health_server(port: int) -> None:
+    """Start a minimal HTTP server on PORT for Cloud Run health checks.
+
+    Cloud Run requires the container to listen on $PORT even when the bot
+    runs in polling mode (no built-in webhook HTTP server).  This starts a
+    background thread with a tiny handler that returns 200 OK so the
+    platform considers the container healthy.
+    """
+
+    class _HealthHandler(BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"OK")
+
+        def log_message(self, *args):  # suppress access logs
+            pass
+
+    server = HTTPServer(("0.0.0.0", port), _HealthHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    logger.info("Health-check server listening on 0.0.0.0:%s", port)
 
 
 def _get_webhook_config() -> tuple[int, str, str, str | None]:
@@ -406,6 +435,13 @@ def main():
             secret_token=secret_token,
         )
         return
+
+    # On Cloud Run (K_SERVICE is set) there is no built-in HTTP listener in
+    # polling mode, so the container would be killed before it starts.
+    # Start a lightweight health-check server on PORT first.
+    if os.getenv("K_SERVICE"):
+        port = int(os.getenv("PORT", "8080"))
+        _start_health_server(port)
 
     logger.info("Starting Hate-2-Action bot in polling mode...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)

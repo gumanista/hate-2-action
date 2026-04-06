@@ -171,7 +171,7 @@ class TestProcessMessagePipeline(unittest.IsolatedAsyncioTestCase):
             message_text="Test message",
         )
         call_kwargs = mock_queries.save_message.call_args.kwargs
-        self.assertEqual(call_kwargs.get("pipeline_used"), "process_message")
+        self.assertEqual(call_kwargs.get("pipeline_used"), "problem_solution")
 
     async def test_show_orgs_false_positive_is_routed_to_process_message(self):
         mock_llm.detect_pipeline.return_value = "process_message"
@@ -184,7 +184,7 @@ class TestProcessMessagePipeline(unittest.IsolatedAsyncioTestCase):
         )
 
         call_kwargs = mock_queries.save_message.call_args.kwargs
-        self.assertEqual(call_kwargs.get("pipeline_used"), "process_message")
+        self.assertEqual(call_kwargs.get("pipeline_used"), "problem_solution")
 
     async def test_previous_message_context_is_passed_to_detector(self):
         mock_queries.get_last_message_context.return_value = {
@@ -226,7 +226,7 @@ class TestProcessMessagePipeline(unittest.IsolatedAsyncioTestCase):
         )
 
         call_kwargs = mock_queries.save_message.call_args.kwargs
-        self.assertEqual(call_kwargs.get("pipeline_used"), "process_message")
+        self.assertEqual(call_kwargs.get("pipeline_used"), "problem_solution")
 
 
 class TestShowOrgsPipeline(unittest.IsolatedAsyncioTestCase):

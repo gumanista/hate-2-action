@@ -35,6 +35,8 @@ STYLE_LABELS_UA = {
     "normal": "нейтральний",
     "rude": "грубуватий",
 }
+
+
 def _style_help_line(style: str) -> str:
     description = llm.STYLE_PROFILES.get(style, "")
     label = STYLE_LABELS_UA.get(style, style)
@@ -42,6 +44,8 @@ def _style_help_line(style: str) -> str:
         f"• `/style_{style}` — *{label}* (`{style}`)\n"
         f"  Опис: {description}"
     )
+
+
 def resolve_style(user_id: int, chat_id: int) -> str:
     user_style = queries.get_user_style(user_id)
     if user_style and user_style != "normal":
@@ -50,6 +54,8 @@ def resolve_style(user_id: int, chat_id: int) -> str:
     if chat_style and chat_style != "normal":
         return chat_style
     return user_style or "normal"
+
+
 async def pipeline_change_style(
     user_id: int,
     chat_id: int,
@@ -57,8 +63,6 @@ async def pipeline_change_style(
     message: str = None,
     requested_style: str = None,
 ) -> str:
-    queries.get_or_create_user(user_id)
-    queries.get_or_create_chat(chat_id, chat_type)
     style = requested_style
     if not style and message:
         style = llm.detect_style_from_message(message)

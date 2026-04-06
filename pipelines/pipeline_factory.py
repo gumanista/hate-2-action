@@ -37,10 +37,16 @@ START_TEXT = (
     "Або скористайся /orgs для пошуку організацій, /style для зміни тону, "
     "або /about щоб дізнатись більше."
 )
+
+
 def pipeline_about_me() -> str:
     return ABOUT_TEXT
+
+
 def pipeline_start() -> str:
     return START_TEXT
+
+
 @dataclass(slots=True, frozen=True)
 class PipelineContext:
     user_id: int
@@ -48,26 +54,37 @@ class PipelineContext:
     chat_type: str
     message_text: str
     tg_message_id: int | None = None
+
+
 @dataclass(slots=True, frozen=True)
 class PipelineResult:
     reply: str
     pipeline_used: str
     apply_style_filter: bool = True
+
+
 class BasePipeline(ABC):
     name: str
+
     @abstractmethod
     async def run(self, ctx: PipelineContext) -> PipelineResult:
         raise NotImplementedError
+
+
 class AboutPipeline(BasePipeline):
     name = "about_me"
     async def run(self, ctx: PipelineContext) -> PipelineResult:
         _ = ctx
         return PipelineResult(reply=pipeline_about_me(), pipeline_used=self.name)
+
+
 class StartPipeline(BasePipeline):
     name = "start"
     async def run(self, ctx: PipelineContext) -> PipelineResult:
         _ = ctx
         return PipelineResult(reply=pipeline_start(), pipeline_used=self.name)
+
+
 class ChangeStylePipeline(BasePipeline):
     name = "change_style"
     async def run(self, ctx: PipelineContext) -> PipelineResult:
@@ -84,6 +101,8 @@ class ChangeStylePipeline(BasePipeline):
             pipeline_used=self.name,
             apply_style_filter=False,
         )
+
+
 class ShowOrgsPipeline(BasePipeline):
     name = "show_orgs"
     async def run(self, ctx: PipelineContext) -> PipelineResult:
@@ -109,6 +128,8 @@ class ProcessMessagePipeline(BasePipeline):
             tg_message_id=ctx.tg_message_id,
         )
         return PipelineResult(reply=reply, pipeline_used=self.name)
+
+
 class PipelineFactory:
     def __init__(self):
         self._registry: dict[str, Callable[[], BasePipeline]] = {

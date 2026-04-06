@@ -23,7 +23,10 @@ Failure behavior:
 import logging
 from db import queries
 from utils import llm
+
 logger = logging.getLogger(__name__)
+
+
 async def pipeline_show_orgs(
     user_id: int,
     chat_id: int,
@@ -33,8 +36,6 @@ async def pipeline_show_orgs(
 ) -> str:
     """Find organizations by user-specified category."""
     try:
-        queries.get_or_create_user(user_id)
-        queries.get_or_create_chat(chat_id, chat_type)
         _ = tg_message_id
         enriched = llm.enrich_query(category_message)
         emb = llm.get_embedding(enriched)

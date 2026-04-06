@@ -134,5 +134,5 @@ async def pipeline_process_message(
         return reply
 
     except Exception as e:
-        logger.error(f"problem_solution pipeline error: {e}", exc_info=True)
+        logger.error(f"pipeline_process_message error: {e}", exc_info=True)
         return "⚠️ Під час обробки повідомлення сталася помилка. Спробуй ще раз."
