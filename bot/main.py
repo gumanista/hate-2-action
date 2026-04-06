@@ -41,6 +41,8 @@ from pipelines import (
     STYLES,
     STYLE_LABELS_UA,
 )
+from pipelines.change_style import STYLE_LABELS
+from utils.llm import detect_language
 from db import queries
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -50,10 +52,27 @@ logger = logging.getLogger(__name__)
 
 WAITING_FOR_CATEGORY = 1
 WAITING_FOR_STYLE = 2
-ORG_SEARCH_PROMPT = (
-    "🏢 Яку тему або категорію організацій шукаєш?\n\n"
-    "Напиши, наприклад: корупція, права тварин, освіта, здоровʼя."
-)
+ORG_SEARCH_PROMPT = {
+    "uk": (
+        "🏢 Яку тему або категорію організацій шукаєш?\n\n"
+        "Напиши, наприклад: корупція, права тварин, освіта, здоровʼя."
+    ),
+    "en": (
+        "🏢 What topic or category of organizations are you looking for?\n\n"
+        "For example: corruption, animal rights, education, health."
+    ),
+}
+
+
+def _detect_user_lang(user, text: str = "") -> str:
+    """Detect language from message text, falling back to Telegram locale."""
+    if text and not text.startswith("/"):
+        return detect_language(text)
+    # For commands, use Telegram's language_code
+    lang_code = getattr(user, "language_code", None) or ""
+    if lang_code.startswith("en"):
+        return "en"
+    return "uk"
 
 REQUIRED_ENV_VARS = (
     "TELEGRAM_BOT_TOKEN",
@@ -114,10 +133,11 @@ def _get_webhook_config() -> tuple[int, str, str, str | None]:
     return port, webhook_path, webhook_url, secret_token
 
 
-def _get_style_keyboard() -> InlineKeyboardMarkup:
+def _get_style_keyboard(lang: str = "uk") -> InlineKeyboardMarkup:
+    labels = STYLE_LABELS.get(lang, STYLE_LABELS_UA)
     buttons = [
         InlineKeyboardButton(
-            STYLE_LABELS_UA.get(s, s.capitalize()), callback_data=f"style:{s}"
+            labels.get(s, s.capitalize()), callback_data=f"style:{s}"
         )
         for s in STYLES
     ]
@@ -125,7 +145,17 @@ def _get_style_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(rows)
 
 
-def _get_start_keyboard() -> InlineKeyboardMarkup:
+def _get_start_keyboard(lang: str = "uk") -> InlineKeyboardMarkup:
+    if lang == "en":
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("🎭 Change style", callback_data="menu:change_style"),
+                    InlineKeyboardButton("🏢 Find NGOs", callback_data="menu:show_orgs"),
+                ],
+                [InlineKeyboardButton("ℹ️ About bot", callback_data="menu:about_me")],
+            ]
+        )
     return InlineKeyboardMarkup(
         [
             [
@@ -141,6 +171,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _ = context
     user = update.effective_user
     chat = update.effective_chat
+    lang = _detect_user_lang(user)
     reply = await pipeline_process_message(
         user.id,
         chat.id,
@@ -148,11 +179,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/start",
         tg_message_id=update.message.message_id,
         forced_pipeline="start",
+        lang=lang,
     )
     await update.message.reply_text(
         reply,
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_get_start_keyboard(),
+        reply_markup=_get_start_keyboard(lang),
     )
 
 
@@ -160,6 +192,7 @@ async def cmd_about(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _ = context
     user = update.effective_user
     chat = update.effective_chat
+    lang = _detect_user_lang(user)
     reply = await pipeline_process_message(
         user.id,
         chat.id,
@@ -167,6 +200,7 @@ async def cmd_about(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/about",
         tg_message_id=update.message.message_id,
         forced_pipeline="about_me",
+        lang=lang,
     )
     await update.message.reply_text(
         reply,
@@ -177,6 +211,7 @@ async def cmd_about(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_style(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     chat = update.effective_chat
+    lang = _detect_user_lang(user)
     args = context.args
     if args and args[0].lower() in STYLES:
         reply = await pipeline_process_message(
@@ -186,6 +221,7 @@ async def cmd_style(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"/style_{args[0].lower()}",
             tg_message_id=update.message.message_id,
             forced_pipeline="change_style",
+            lang=lang,
         )
         await update.message.reply_text(reply, parse_mode=ParseMode.MARKDOWN)
     else:
@@ -196,11 +232,12 @@ async def cmd_style(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/style",
             tg_message_id=update.message.message_id,
             forced_pipeline="change_style",
+            lang=lang,
         )
         await update.message.reply_text(
             reply,
             parse_mode=ParseMode.MARKDOWN,
-            reply_markup=_get_style_keyboard(),
+            reply_markup=_get_style_keyboard(lang),
         )
 
 
@@ -212,6 +249,7 @@ async def cmd_style_shortcut(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if style in STYLES:
         user = update.effective_user
         chat = update.effective_chat
+        lang = _detect_user_lang(user)
         reply = await pipeline_process_message(
             user.id,
             chat.id,
@@ -219,44 +257,48 @@ async def cmd_style_shortcut(update: Update, context: ContextTypes.DEFAULT_TYPE)
             update.message.text,
             tg_message_id=update.message.message_id,
             forced_pipeline="change_style",
+            lang=lang,
         )
         await update.message.reply_text(reply, parse_mode=ParseMode.MARKDOWN)
 
 
 async def cmd_orgs_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    _ = context
     user = update.effective_user
     chat = update.effective_chat
+    lang = _detect_user_lang(user)
+    context.user_data["lang"] = lang
+    prompt = ORG_SEARCH_PROMPT.get(lang, ORG_SEARCH_PROMPT["uk"])
     queries.get_or_create_user(user.id)
     queries.get_or_create_chat(chat.id, chat.type)
     queries.save_message(
         chat.id,
         user.id,
         "/orgs",
-        ORG_SEARCH_PROMPT,
+        prompt,
         tg_message_id=update.message.message_id,
         pipeline_used="show_orgs",
     )
     await update.message.reply_text(
-        ORG_SEARCH_PROMPT,
+        prompt,
         parse_mode=ParseMode.MARKDOWN,
     )
     return WAITING_FOR_CATEGORY
 
 
 async def cmd_orgs_receive_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    _ = context
     user = update.effective_user
     chat = update.effective_chat
     category = update.message.text
-
-    await update.message.reply_text("🔍 Шукаю організації...", parse_mode=ParseMode.MARKDOWN)
+    lang = context.user_data.get("lang", _detect_user_lang(user, category))
+    searching = "🔍 Searching for organizations..." if lang == "en" else "🔍 Шукаю організації..."
+    await update.message.reply_text(searching, parse_mode=ParseMode.MARKDOWN)
     reply = await pipeline_process_message(
         user.id,
         chat.id,
         chat.type,
         category,
         tg_message_id=update.message.message_id,
+        lang=lang,
     )
     await update.message.reply_text(
         reply,
@@ -267,8 +309,9 @@ async def cmd_orgs_receive_category(update: Update, context: ContextTypes.DEFAUL
 
 
 async def cmd_orgs_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    _ = context
-    await update.message.reply_text("Пошук скасовано.")
+    lang = context.user_data.get("lang", _detect_user_lang(update.effective_user))
+    cancel_msg = "Search cancelled." if lang == "en" else "Пошук скасовано."
+    await update.message.reply_text(cancel_msg)
     return ConversationHandler.END
 
 
@@ -278,6 +321,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     chat = update.effective_chat
     data = query.data
+    lang = _detect_user_lang(user)
 
     if data.startswith("style:"):
         style = data.split(":")[1]
@@ -288,6 +332,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"/style_{style}",
             tg_message_id=query.message.message_id if query.message else None,
             forced_pipeline="change_style",
+            lang=lang,
         )
         await query.edit_message_text(reply, parse_mode=ParseMode.MARKDOWN)
 
@@ -299,6 +344,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/about",
             tg_message_id=query.message.message_id if query.message else None,
             forced_pipeline="about_me",
+            lang=lang,
         )
         await query.edit_message_text(reply, parse_mode=ParseMode.MARKDOWN)
     elif data == "menu:change_style":
@@ -309,28 +355,31 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/style",
             tg_message_id=query.message.message_id if query.message else None,
             forced_pipeline="change_style",
+            lang=lang,
         )
         await query.edit_message_text(
             reply,
             parse_mode=ParseMode.MARKDOWN,
-            reply_markup=_get_style_keyboard(),
+            reply_markup=_get_style_keyboard(lang),
         )
     elif data == "menu:show_orgs":
         queries.get_or_create_user(user.id)
         queries.get_or_create_chat(chat.id, chat.type)
+        prompt = ORG_SEARCH_PROMPT.get(lang, ORG_SEARCH_PROMPT["uk"])
         queries.save_message(
             chat.id,
             user.id,
             "/orgs",
-            ORG_SEARCH_PROMPT,
+            prompt,
             tg_message_id=query.message.message_id if query.message else None,
             pipeline_used="show_orgs",
         )
         await query.edit_message_text(
-            ORG_SEARCH_PROMPT,
+            prompt,
             parse_mode=ParseMode.MARKDOWN,
         )
         context.user_data["waiting_for_org_category"] = True
+        context.user_data["lang"] = lang
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     if not message or not message.text:
@@ -352,6 +401,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = text.replace(f"@{bot_username}", "").strip()
     if context.user_data.get("waiting_for_org_category"):
         context.user_data.pop("waiting_for_org_category")
+        lang = context.user_data.get("lang", _detect_user_lang(user, text))
         await context.bot.send_chat_action(chat_id=chat.id, action="typing")
         reply = await pipeline_process_message(
             user.id,
@@ -359,6 +409,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat.type,
             text,
             tg_message_id=message.message_id,
+            lang=lang,
         )
         await message.reply_text(
             reply,
@@ -366,9 +417,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             disable_web_page_preview=True,
         )
         return
+    lang = _detect_user_lang(user, text)
     await context.bot.send_chat_action(chat_id=chat.id, action="typing")
     reply = await pipeline_process_message(
-        user.id, chat.id, chat.type, text, tg_message_id=message.message_id
+        user.id, chat.id, chat.type, text, tg_message_id=message.message_id, lang=lang
     )
     await message.reply_text(
         reply,
@@ -378,9 +430,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error("Exception while handling update:", exc_info=context.error)
     if isinstance(update, Update) and update.effective_message:
-        await update.effective_message.reply_text(
-            "⚠️ Сталася помилка. Спробуй ще раз пізніше."
+        lang = "uk"
+        if update.effective_user:
+            lang = _detect_user_lang(update.effective_user)
+        error_msg = (
+            "⚠️ An error occurred. Please try again later."
+            if lang == "en"
+            else "⚠️ Сталася помилка. Спробуй ще раз пізніше."
         )
+        await update.effective_message.reply_text(error_msg)
 
 
 def _validate_required_env() -> None:

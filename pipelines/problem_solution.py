@@ -124,6 +124,7 @@ async def pipeline_problem_solution(
     chat_type: str,
     message_text: str,
     tg_message_id: int = None,
+    lang: str = "uk",
 ) -> str:
     """
     Run core recommendation pipeline:
@@ -170,8 +171,10 @@ async def pipeline_problem_solution(
             fallback_embedding = llm.get_embedding(fallback_text)
             orgs = queries.find_orgs_by_embedding(fallback_embedding, top_n=3)
             projects = queries.find_projects_by_embedding(fallback_embedding, top_n=3)
-        reply = llm.generate_reply(message_text, "normal", orgs, projects, history)
+        reply = llm.generate_reply(message_text, "normal", orgs, projects, history, lang=lang)
         return reply
     except Exception as e:
         logger.error(f"problem_solution pipeline error: {e}", exc_info=True)
+        if lang == "en":
+            return "⚠️ An error occurred while processing your message. Please try again."
         return "⚠️ Під час обробки повідомлення сталася помилка. Спробуй ще раз."

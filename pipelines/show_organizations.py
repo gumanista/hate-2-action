@@ -33,6 +33,7 @@ async def pipeline_show_orgs(
     chat_type: str,
     category_message: str,
     tg_message_id: int = None,
+    lang: str = "uk",
 ) -> str:
     """Find organizations by user-specified category."""
     try:
@@ -41,8 +42,10 @@ async def pipeline_show_orgs(
         emb = llm.get_embedding(enriched)
         orgs = queries.find_orgs_by_embedding(emb, top_n=5)
         projects = queries.find_projects_by_embedding(emb, top_n=5)
-        reply = llm.generate_org_reply(category_message, orgs, projects, "normal")
+        reply = llm.generate_org_reply(category_message, orgs, projects, "normal", lang=lang)
         return reply
     except Exception as e:
         logger.error(f"show_orgs pipeline error: {e}", exc_info=True)
+        if lang == "en":
+            return "⚠️ Could not find organizations right now. Please try again."
         return "⚠️ Зараз не вдалося знайти організації. Спробуй ще раз."

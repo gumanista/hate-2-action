@@ -10,7 +10,7 @@ Design:
 - This file re-exports selected symbols and defines `__all__` so callers can
   import from `pipelines` without needing module-level knowledge.
 """
-from .change_style import STYLES, STYLE_LABELS_UA, pipeline_change_style, resolve_style
+from .change_style import STYLES, STYLE_LABELS_UA, STYLE_LABELS, pipeline_change_style, resolve_style
 from .message_orchestrator import pipeline_process_message
 from .pipeline_factory import (
     ABOUT_TEXT,
@@ -30,6 +30,7 @@ __all__ = [
     "resolve_style",
     "STYLES",
     "STYLE_LABELS_UA",
+    "STYLE_LABELS",
     "ABOUT_TEXT",
     "START_TEXT",
 ]

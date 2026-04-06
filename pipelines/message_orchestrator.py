@@ -20,7 +20,7 @@ PIPELINE_FACTORY = PipelineFactory()
 INTENT_PIPELINES = PIPELINE_FACTORY.intents
 
 
-def _apply_style_filter(reply: str, style: str, pipeline_name: str) -> str:
+def _apply_style_filter(reply: str, style: str, pipeline_name: str, lang: str = "uk") -> str:
     if not reply:
         return reply
     if pipeline_name == "change_style":
@@ -28,7 +28,7 @@ def _apply_style_filter(reply: str, style: str, pipeline_name: str) -> str:
     if style == "normal":
         return reply
     try:
-        return llm.rewrite_reply_with_style(reply, style)
+        return llm.rewrite_reply_with_style(reply, style, lang=lang)
     except Exception as e:
         logger.warning(f"Style filter failed for pipeline={pipeline_name}: {e}")
         return reply
@@ -87,6 +87,7 @@ async def pipeline_process_message(
     message_text: str,
     tg_message_id: int = None,
     forced_pipeline: str | None = None,
+    lang: str | None = None,
 ) -> str:
     """
     Main message entrypoint:
@@ -95,6 +96,8 @@ async def pipeline_process_message(
     - apply style filter and persist response
     """
     try:
+        if lang is None:
+            lang = llm.detect_language(message_text)
         queries.get_or_create_user(user_id)
         queries.get_or_create_chat(chat_id, chat_type)
         last_message_context = _get_last_message_context(chat_id, user_id)
@@ -107,7 +110,7 @@ async def pipeline_process_message(
                 last_message_context=last_message_context,
             )
         )
-        logger.info(f"Detected pipeline: {pipeline_name} for user {user_id}")
+        logger.info(f"Detected pipeline: {pipeline_name} for user {user_id} (lang={lang})")
         style = resolve_style(user_id, chat_id)
         context = PipelineContext(
             user_id=user_id,
@@ -115,11 +118,12 @@ async def pipeline_process_message(
             chat_type=chat_type,
             message_text=message_text,
             tg_message_id=tg_message_id,
+            lang=lang,
         )
         pipeline = PIPELINE_FACTORY.create(pipeline_name)
         result = await pipeline.run(context)
         reply = (
-            _apply_style_filter(result.reply, style, result.pipeline_used)
+            _apply_style_filter(result.reply, style, result.pipeline_used, lang=lang)
             if result.apply_style_filter
             else result.reply
         )
@@ -135,4 +139,6 @@ async def pipeline_process_message(
 
     except Exception as e:
         logger.error(f"pipeline_process_message error: {e}", exc_info=True)
+        if lang == "en":
+            return "⚠️ An error occurred while processing your message. Please try again."
         return "⚠️ Під час обробки повідомлення сталася помилка. Спробуй ще раз."
