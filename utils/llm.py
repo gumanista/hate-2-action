@@ -213,7 +213,7 @@ Reply with only the pipeline name, no explanations."""
     response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=20,
+        max_completion_tokens=20,
         temperature=0,
     )
     result = response.choices[0].message.content.strip().lower()
@@ -243,7 +243,7 @@ Respond in valid JSON with this exact structure:
     response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=600,
+        max_completion_tokens=600,
         temperature=0.2,
         response_format={"type": "json_object"},
     )
@@ -318,7 +318,7 @@ Generate a response following the structure: validation → advice → encourage
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        max_tokens=400,
+        max_completion_tokens=400,
         temperature=0.7,
     )
     return response.choices[0].message.content.strip()
@@ -366,7 +366,7 @@ Use Markdown links: [Name](url). Write concisely and practically."""
             {"role": "system", "content": style_instruction},
             {"role": "user", "content": user_prompt},
         ],
-        max_tokens=400,
+        max_completion_tokens=400,
         temperature=0.7,
     )
     return response.choices[0].message.content.strip()
@@ -398,12 +398,12 @@ def detect_style_from_message(message: str) -> str | None:
     response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=10,
+        max_completion_tokens=10,
         temperature=0,
     )
     result = response.choices[0].message.content.strip().lower()
     return (
-        result if result in set(STYLE_PROFILES.keys()) else None
+        result if result in set(STYLE_PROFILES["uk"].keys()) else None
     )
 
 
@@ -415,7 +415,7 @@ Return only the enriched text."""
     response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=150,
+        max_completion_tokens=150,
         temperature=0.3,
     )
     return response.choices[0].message.content.strip()[:800]
@@ -448,7 +448,7 @@ def rewrite_reply_with_style(text: str, style: str, lang: str = "uk") -> str:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        max_tokens=500,
+        max_completion_tokens=500,
         temperature=0.3,
     )
     return response.choices[0].message.content.strip()
