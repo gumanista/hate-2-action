@@ -24,6 +24,7 @@ services:
         condition: service_healthy
     environment:
       APP_MODE: polling
+      BOT_ENV: ${BOT_ENV:-local}
       DATABASE_URL: ${DATABASE_URL:-postgresql://hate2action:hate2action@db:5432/hate2action}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       OPENAI_API_KEY: ${OPENAI_API_KEY}

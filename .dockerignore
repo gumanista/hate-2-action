@@ -17,3 +17,5 @@ tests/
 *.csv
 *.pdf
 todo.md
+scripts/
+read-deploy.md
