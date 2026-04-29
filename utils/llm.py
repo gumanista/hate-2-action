@@ -243,11 +243,15 @@ Respond in valid JSON with this exact structure:
     response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[{"role": "user", "content": prompt}],
-        max_completion_tokens=600,
+        max_completion_tokens=1500,
         temperature=0.2,
         response_format={"type": "json_object"},
     )
-    return json.loads(response.choices[0].message.content)
+    content = response.choices[0].message.content or ""
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        return {"problems": [], "solutions": []}
 
 
 def generate_reply(

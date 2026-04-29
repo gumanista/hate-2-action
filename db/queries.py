@@ -261,3 +261,254 @@ def find_projects_via_solutions(problem_ids: list[int], top_n: int = 5) -> list[
             (*problem_ids, top_n),
         )
         return [dict(r) for r in cur.fetchall()]
+
+
+# ── CRUD: Organizations ──────────────────────────────────────────────────
+def list_organizations() -> list[dict]:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT organization_id, name, description, website, contact_email, created_at "
+            "FROM organizations ORDER BY name"
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def get_organization(organization_id: int) -> dict | None:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT organization_id, name, description, website, contact_email, created_at "
+            "FROM organizations WHERE organization_id = %s",
+            (organization_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        org = dict(row)
+        cur.execute(
+            "SELECT project_id, name, description, organization_id, created_at "
+            "FROM projects WHERE organization_id = %s ORDER BY name",
+            (organization_id,),
+        )
+        org["projects"] = [dict(r) for r in cur.fetchall()]
+        return org
+
+
+def create_organization(name: str, description: str | None, website: str | None, contact_email: str | None) -> dict:
+    with db_cursor() as cur:
+        cur.execute(
+            "INSERT INTO organizations (name, description, website, contact_email) "
+            "VALUES (%s, %s, %s, %s) RETURNING *",
+            (name, description, website, contact_email),
+        )
+        return dict(cur.fetchone())
+
+
+def update_organization(organization_id: int, name: str, description: str | None, website: str | None, contact_email: str | None) -> dict | None:
+    with db_cursor() as cur:
+        cur.execute(
+            "UPDATE organizations SET name = %s, description = %s, website = %s, contact_email = %s "
+            "WHERE organization_id = %s RETURNING *",
+            (name, description, website, contact_email, organization_id),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def delete_organization(organization_id: int) -> bool:
+    with db_cursor() as cur:
+        cur.execute("DELETE FROM organizations_solutions WHERE organization_id = %s", (organization_id,))
+        cur.execute("DELETE FROM organizations_vec WHERE organization_id = %s", (organization_id,))
+        cur.execute("UPDATE projects SET organization_id = NULL WHERE organization_id = %s", (organization_id,))
+        cur.execute("DELETE FROM organizations WHERE organization_id = %s", (organization_id,))
+        return cur.rowcount > 0
+
+
+# ── CRUD: Projects ───────────────────────────────────────────────────────
+def list_projects() -> list[dict]:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT p.project_id, p.name, p.description, p.organization_id, p.created_at, "
+            "       o.name AS organization_name "
+            "FROM projects p LEFT JOIN organizations o ON p.organization_id = o.organization_id "
+            "ORDER BY p.name"
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def get_project(project_id: int) -> dict | None:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT project_id, name, description, organization_id, created_at "
+            "FROM projects WHERE project_id = %s",
+            (project_id,),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def create_project(name: str, description: str | None, organization_id: int | None) -> dict:
+    with db_cursor() as cur:
+        cur.execute(
+            "INSERT INTO projects (name, description, organization_id) "
+            "VALUES (%s, %s, %s) RETURNING *",
+            (name, description, organization_id),
+        )
+        return dict(cur.fetchone())
+
+
+def update_project(project_id: int, name: str, description: str | None, organization_id: int | None) -> dict | None:
+    with db_cursor() as cur:
+        cur.execute(
+            "UPDATE projects SET name = %s, description = %s, organization_id = %s "
+            "WHERE project_id = %s RETURNING *",
+            (name, description, organization_id, project_id),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def delete_project(project_id: int) -> bool:
+    with db_cursor() as cur:
+        cur.execute("DELETE FROM projects_solutions WHERE project_id = %s", (project_id,))
+        cur.execute("DELETE FROM projects_vec WHERE project_id = %s", (project_id,))
+        cur.execute("DELETE FROM projects WHERE project_id = %s", (project_id,))
+        return cur.rowcount > 0
+
+
+# ── CRUD: Problems ───────────────────────────────────────────────────────
+def list_problems() -> list[dict]:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT problem_id, name, context, content, is_processed, created_at "
+            "FROM problems ORDER BY created_at DESC"
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def get_problem(problem_id: int) -> dict | None:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT problem_id, name, context, content, is_processed, created_at "
+            "FROM problems WHERE problem_id = %s",
+            (problem_id,),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def create_problem(name: str, context: str | None, content: str | None, is_processed: bool = False) -> dict:
+    with db_cursor() as cur:
+        cur.execute(
+            "INSERT INTO problems (name, context, content, is_processed) "
+            "VALUES (%s, %s, %s, %s) "
+            "RETURNING problem_id, name, context, content, is_processed, created_at",
+            (name, context, content, is_processed),
+        )
+        return dict(cur.fetchone())
+
+
+def update_problem(problem_id: int, name: str, context: str | None, content: str | None, is_processed: bool | None) -> dict | None:
+    with db_cursor() as cur:
+        cur.execute(
+            "UPDATE problems SET name = %s, context = %s, content = %s, "
+            "is_processed = COALESCE(%s, is_processed) "
+            "WHERE problem_id = %s "
+            "RETURNING problem_id, name, context, content, is_processed, created_at",
+            (name, context, content, is_processed, problem_id),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def delete_problem(problem_id: int) -> bool:
+    with db_cursor() as cur:
+        cur.execute("DELETE FROM problems_solutions WHERE problem_id = %s", (problem_id,))
+        cur.execute("DELETE FROM problems WHERE problem_id = %s", (problem_id,))
+        return cur.rowcount > 0
+
+
+# ── CRUD: Solutions ──────────────────────────────────────────────────────
+def list_solutions() -> list[dict]:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT solution_id, name, context, content, created_at "
+            "FROM solutions ORDER BY created_at DESC"
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def get_solution(solution_id: int) -> dict | None:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT solution_id, name, context, content, created_at "
+            "FROM solutions WHERE solution_id = %s",
+            (solution_id,),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def create_solution(name: str, context: str | None, content: str | None) -> dict:
+    with db_cursor() as cur:
+        cur.execute(
+            "INSERT INTO solutions (name, context, content) "
+            "VALUES (%s, %s, %s) "
+            "RETURNING solution_id, name, context, content, created_at",
+            (name, context, content),
+        )
+        return dict(cur.fetchone())
+
+
+def update_solution(solution_id: int, name: str, context: str | None, content: str | None) -> dict | None:
+    with db_cursor() as cur:
+        cur.execute(
+            "UPDATE solutions SET name = %s, context = %s, content = %s "
+            "WHERE solution_id = %s "
+            "RETURNING solution_id, name, context, content, created_at",
+            (name, context, content, solution_id),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def delete_solution(solution_id: int) -> bool:
+    with db_cursor() as cur:
+        cur.execute("DELETE FROM problems_solutions WHERE solution_id = %s", (solution_id,))
+        cur.execute("DELETE FROM organizations_solutions WHERE solution_id = %s", (solution_id,))
+        cur.execute("DELETE FROM projects_solutions WHERE solution_id = %s", (solution_id,))
+        cur.execute("DELETE FROM solutions WHERE solution_id = %s", (solution_id,))
+        return cur.rowcount > 0
+
+
+# ── Messages ─────────────────────────────────────────────────────────────
+def list_messages(limit: int = 200) -> list[dict]:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT m.message_id, m.chat_id, m.user_id, m.message_text, m.reply_text, "
+            "       m.pipeline_used, m.date, "
+            "       u.username AS user_username, u.first_name AS user_first_name, "
+            "       c.type AS chat_type "
+            "FROM messages_history m "
+            "LEFT JOIN users u ON m.user_id = u.user_id "
+            "LEFT JOIN chats c ON m.chat_id = c.chat_id "
+            "ORDER BY m.date DESC LIMIT %s",
+            (limit,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def get_message(message_id: int) -> dict | None:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT m.message_id, m.chat_id, m.user_id, m.message_text, m.reply_text, "
+            "       m.pipeline_used, m.date, "
+            "       u.username AS user_username, u.first_name AS user_first_name, "
+            "       c.type AS chat_type "
+            "FROM messages_history m "
+            "LEFT JOIN users u ON m.user_id = u.user_id "
+            "LEFT JOIN chats c ON m.chat_id = c.chat_id "
+            "WHERE m.message_id = %s",
+            (message_id,),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
