@@ -14,6 +14,8 @@ Main responsibilities:
 
 import os
 import sys
+import asyncio
+import contextlib
 import logging
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -348,6 +350,31 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         context.user_data["waiting_for_org_category"] = True
         context.user_data["lang"] = lang
+@contextlib.asynccontextmanager
+async def _typing_action(bot, chat_id: int):
+    """Keep Telegram's 'typing…' indicator on for the duration of the block."""
+    await bot.send_chat_action(chat_id=chat_id, action="typing")
+    async def _loop():
+        try:
+            while True:
+                await asyncio.sleep(4)
+                await bot.send_chat_action(chat_id=chat_id, action="typing")
+        except asyncio.CancelledError:
+            pass
+    task = asyncio.create_task(_loop())
+    try:
+        yield
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
+def _run_coro_blocking(coro):
+    """Run an async coroutine to completion in a worker thread with its own loop."""
+    return asyncio.run(coro)
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     if not message or not message.text:
@@ -370,15 +397,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("waiting_for_org_category"):
         context.user_data.pop("waiting_for_org_category")
         lang = context.user_data.get("lang", _detect_user_lang(user, text))
-        await context.bot.send_chat_action(chat_id=chat.id, action="typing")
-        reply = await pipeline_process_message(
-            user.id,
-            chat.id,
-            chat.type,
-            text,
-            tg_message_id=message.message_id,
-            lang=lang,
-        )
+        async with _typing_action(context.bot, chat.id):
+            reply = await asyncio.to_thread(
+                _run_coro_blocking,
+                pipeline_process_message(
+                    user.id,
+                    chat.id,
+                    chat.type,
+                    text,
+                    tg_message_id=message.message_id,
+                    lang=lang,
+                ),
+            )
         await message.reply_text(
             reply,
             parse_mode=ParseMode.MARKDOWN,
@@ -386,10 +416,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     lang = _detect_user_lang(user, text)
-    await context.bot.send_chat_action(chat_id=chat.id, action="typing")
-    reply = await pipeline_process_message(
-        user.id, chat.id, chat.type, text, tg_message_id=message.message_id, lang=lang
-    )
+    async with _typing_action(context.bot, chat.id):
+        reply = await asyncio.to_thread(
+            _run_coro_blocking,
+            pipeline_process_message(
+                user.id, chat.id, chat.type, text, tg_message_id=message.message_id, lang=lang
+            ),
+        )
     await message.reply_text(
         reply,
         parse_mode=ParseMode.MARKDOWN,
