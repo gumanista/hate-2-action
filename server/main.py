@@ -1,7 +1,9 @@
 """FastAPI server exposing CRUD + process-message endpoints for the hate2action frontend."""
+import json
 import logging
 import os
 from pathlib import Path
+from threading import Lock
 
 from fastapi import FastAPI, HTTPException, Header, Response, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +28,7 @@ from server.schemas import (
     ProjectOut,
     SolutionIn,
     SolutionOut,
+    TestCaseUpdate,
 )
 from utils import llm
 
@@ -33,6 +36,22 @@ logger = logging.getLogger(__name__)
 
 API_KEY = os.getenv("API_KEY", "")
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+TEST_CASES_PATH = Path(os.getenv("TEST_CASES_PATH", str(Path(__file__).resolve().parent.parent / "test.json")))
+_test_cases_lock = Lock()
+
+
+def _load_test_cases() -> list[dict]:
+    if not TEST_CASES_PATH.exists():
+        return []
+    with TEST_CASES_PATH.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _save_test_cases(cases: list[dict]) -> None:
+    tmp = TEST_CASES_PATH.with_suffix(TEST_CASES_PATH.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        json.dump(cases, f, ensure_ascii=False, indent=2)
+    tmp.replace(TEST_CASES_PATH)
 
 app = FastAPI(title="hate2action API")
 
@@ -302,6 +321,33 @@ def process_message(payload: ProcessMessageIn, x_api_key: str | None = Header(de
     except Exception as e:
         logger.error("process-message failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Test cases (bot reply lab) ───────────────────────────────────────────
+@app.get("/test-cases")
+def get_test_cases(x_api_key: str | None = Header(default=None, alias="X-API-Key")):
+    _check_api_key(x_api_key)
+    return _load_test_cases()
+
+
+@app.put("/test-cases/{case_id}")
+def put_test_case(
+    case_id: int,
+    payload: TestCaseUpdate,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+):
+    _check_api_key(x_api_key)
+    with _test_cases_lock:
+        cases = _load_test_cases()
+        target = next((c for c in cases if c.get("id") == case_id), None)
+        if target is None:
+            raise HTTPException(status_code=404, detail="Test case not found")
+        if payload.output is not None:
+            target["output"] = payload.output
+        if payload.comment is not None:
+            target["comment"] = payload.comment
+        _save_test_cases(cases)
+        return target
 
 
 # ── Static frontend ──────────────────────────────────────────────────────

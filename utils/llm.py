@@ -43,12 +43,27 @@ STYLE_PROFILES = {
             "делікатними формулюваннями та спокійною подачею."
         ),
         "funny": (
-            "Смішний стиль: легкий дотепний тон із доречним гумором, живою подачею "
-            "та дружньою енергією без втрати практичності."
+            "Смішний стиль: жартівливий, грайливий тон зі справжніми жартами, "
+            "грою слів, дотепними порівняннями та легкою самоіронією — гумор має "
+            "бути відчутним, а не лише натяком на дружній тон. "
+            "ВАЖЛИВО: НЕ припускай, що користувач 'злиться', 'тригериться', "
+            "'його вивертає' чи 'накрило'. Людина може просто коментувати ситуацію "
+            "без емоційного навантаження. Уникай слів 'злість', 'обурення' та "
+            "фраз типу 'тебе тригернуло', 'тебе вивертає', 'твоя злість'. "
+            "Жартуй з ситуації, абсурду чи з самого себе — не з користувача. "
+            "Не ображай, не повчай, не натискай. "
+            "Тримай відповідь стислою (3-4 речення), щоб жарт спрацював."
         ),
         "sarcastic": (
-            "Саркастичний стиль: стримана іронія, колюча подача і тверезий погляд "
-            "на проблему, але без образ і приниження."
+            "Саркастичний стиль: гострий, сухий і влучний сарказм у дусі "
+            "Леся Подерв'янського — підтримуй людину, але висміюй ситуацію, "
+            "лицемірство, абсурд чи систему, а не самого користувача. "
+            "Сарказм має бути різким і конкретним, не м'яким. "
+            "Якщо користувач у своєму повідомленні вживає нецензурну лексику, "
+            "можеш у міру відповідати в тому ж регістрі (без переходу на "
+            "особисті образи проти користувача). "
+            "Без моралізаторства й політичних повчань. "
+            "Тримай відповідь короткою (3-4 речення) — сарказм має бути швидким."
         ),
         "normal": (
             "Нейтральний стиль: чіткий, збалансований і спокійний тон, фокус на "
@@ -65,12 +80,27 @@ STYLE_PROFILES = {
             "delicate phrasing and calm delivery."
         ),
         "funny": (
-            "Funny style: light witty tone with appropriate humor, lively delivery "
-            "and friendly energy without losing practicality."
+            "Funny style: playful, jokey tone with real jokes, wordplay, witty "
+            "comparisons and light self-irony — humor must be tangible, not just "
+            "a hint of friendly tone. "
+            "IMPORTANT: do NOT assume the user is 'angry', 'triggered', 'fuming' "
+            "or 'losing it'. They may simply be commenting on the situation "
+            "without heavy emotion. Avoid words like 'anger', 'rage' and phrases "
+            "like 'you're triggered', 'this is eating you up', 'your anger'. "
+            "Joke about the situation, the absurdity, or yourself — not the user. "
+            "Don't insult, lecture or pressure. "
+            "Keep the response short (3-4 sentences) so the joke lands."
         ),
         "sarcastic": (
-            "Sarcastic style: restrained irony, edgy delivery and sober outlook "
-            "on the problem, but without insults or humiliation."
+            "Sarcastic style: sharp, dry, on-point sarcasm — back the user up "
+            "while mocking the situation, hypocrisy, absurdity or the system, "
+            "not the user themselves. Sarcasm should be cutting and specific, "
+            "not soft. "
+            "If the user uses profanity in their own message, you may match the "
+            "register moderately (without crossing into personal insults against "
+            "the user). "
+            "No moralizing or political lecturing. "
+            "Keep the response short (3-4 sentences) — sarcasm should be quick."
         ),
         "normal": (
             "Neutral style: clear, balanced and calm tone, focus on "
@@ -425,27 +455,62 @@ Return only the enriched text."""
     return response.choices[0].message.content.strip()[:800]
 
 
-def rewrite_reply_with_style(text: str, style: str, lang: str = "uk") -> str:
+def rewrite_reply_with_style(text: str, style: str, lang: str = "uk", original_message: str | None = None) -> str:
     """Apply style as a post-generation filter while preserving content."""
     if style == "normal":
         return text
     style_instruction = _style_instruction(style, lang)
+    style_specific_en = ""
+    style_specific_uk = ""
+    if style == "funny":
+        style_specific_en = (
+            "If the original starts with emotional validation like "
+            "'I see you're triggered', 'this is eating you up', 'your anger is valid', "
+            "REWRITE that opening into a joke or witty observation about the situation, "
+            "not about the user's emotions. Don't tell the user how they feel. "
+            "Aim for actual humor (wordplay, absurd comparison, self-irony), not just a friendly tone."
+        )
+        style_specific_uk = (
+            "Якщо оригінал починається з емоційної валідації типу "
+            "'бачу, тебе тригернуло', 'тебе вивертає', 'твоя злість зрозуміла', "
+            "ПЕРЕПИШИ цей вступ як жарт чи дотепне спостереження про ситуацію, "
+            "а не про емоції користувача. Не кажи користувачу, що він відчуває. "
+            "Цілься у справжній гумор (гра слів, абсурдне порівняння, самоіронія), "
+            "а не просто дружній тон. Підсумок у кінці не має згадувати 'злість' "
+            "чи 'обурення' користувача."
+        )
+    elif style == "sarcastic":
+        style_specific_en = (
+            "Make sarcasm sharper and shorter — cut soft, hedging phrases. "
+            "Mock the situation/system/absurdity, not the user. "
+            "If the original user message contains profanity, you may match the register moderately."
+        )
+        style_specific_uk = (
+            "Зроби сарказм гострішим і коротшим — приберай м'які, обережні формулювання. "
+            "Висміюй ситуацію/систему/абсурд, не самого користувача. "
+            "Якщо в оригінальному повідомленні користувача є нецензурна лексика, "
+            "можна помірно вживати її і у відповіді (без особистих образ)."
+        )
     if lang == "en":
         system_prompt = (
             f"{style_instruction}\n"
             "Rewrite the text in the given tone. Do not invent new facts. "
             "Preserve Markdown links, organization/project names and practical steps. "
+            f"{style_specific_en} "
             "Return the final text in English only."
         )
-        user_prompt = f"Original text:\n{text}\n\nReturn only the final rewritten text."
+        original_block = f"\n\nUser's original message (for context, do NOT rewrite it):\n{original_message}\n" if original_message else ""
+        user_prompt = f"Original text:\n{text}{original_block}\n\nReturn only the final rewritten text."
     else:
         system_prompt = (
             f"{style_instruction}\n"
             "Перепиши текст у заданому тоні. Не вигадуй нових фактів. "
             "Збережи Markdown-посилання, назви організацій/проєктів і практичні кроки. "
+            f"{style_specific_uk} "
             "Фінальний текст поверни лише українською мовою."
         )
-        user_prompt = f"Оригінальний текст:\n{text}\n\nПоверни тільки фінальний переписаний текст."
+        original_block = f"\n\nОригінальне повідомлення користувача (для контексту, не переписуй його):\n{original_message}\n" if original_message else ""
+        user_prompt = f"Оригінальний текст:\n{text}{original_block}\n\nПоверни тільки фінальний переписаний текст."
     response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
         messages=[
@@ -453,6 +518,6 @@ def rewrite_reply_with_style(text: str, style: str, lang: str = "uk") -> str:
             {"role": "user", "content": user_prompt},
         ],
         max_completion_tokens=500,
-        temperature=0.3,
+        temperature=0.5 if style == "funny" else 0.4,
     )
     return response.choices[0].message.content.strip()

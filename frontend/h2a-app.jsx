@@ -859,6 +859,272 @@ function ReviewQueuePage({ submissions, onReview }) {
 }
 
 /* ══════════════════════════════════════════
+   BOT TEST LAB (developer only)
+══════════════════════════════════════════ */
+function BotTestLabPage() {
+  const [tab, setTab] = useState('run'); // 'run' | 'review'
+  const { data: cases, loading, error, reload, setData } = useData(() => window.api.getTestCases());
+
+  const [filterLang,  setFilterLang]  = useState('');
+  const [filterStyle, setFilterStyle] = useState('');
+  const [filterTopic, setFilterTopic] = useState('');
+  const [onlyUnfilled, setOnlyUnfilled] = useState(true);
+  const [limit, setLimit] = useState('');
+
+  const [running, setRunning]   = useState(false);
+  const stopRef = useRef(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0, current: null });
+
+  const all = cases || [];
+  const langs  = [...new Set(all.map(c => c.lang))].sort();
+  const styles = [...new Set(all.map(c => c.style))].sort();
+  const topics = [...new Set(all.map(c => c.topic))].sort();
+
+  const filtered = all.filter(c =>
+    (!filterLang  || c.lang  === filterLang)  &&
+    (!filterStyle || c.style === filterStyle) &&
+    (!filterTopic || c.topic === filterTopic)
+  );
+  const runnable = filtered
+    .filter(c => !onlyUnfilled || !(c.output || '').trim())
+    .slice(0, limit ? Number(limit) : undefined);
+
+  async function runOne(c) {
+    const res    = await window.api.processMessage(c.message_input, c.style);
+    const output = (res?.text || '').trim();
+    await window.api.updateTestCase(c.id, { output });
+    setData(prev => prev.map(x => x.id === c.id ? { ...x, output } : x));
+    return output;
+  }
+
+  async function runBatch() {
+    if (running) return;
+    setRunning(true); stopRef.current = false;
+    setProgress({ done: 0, total: runnable.length, current: null });
+    for (let i = 0; i < runnable.length; i++) {
+      if (stopRef.current) break;
+      const c = runnable[i];
+      setProgress({ done: i, total: runnable.length, current: c });
+      try { await runOne(c); }
+      catch (e) { toast.error(`#${c.id}: ${e.message}`); }
+      setProgress({ done: i + 1, total: runnable.length, current: null });
+    }
+    setRunning(false);
+    toast(stopRef.current ? 'Stopped' : '✅ Run complete');
+  }
+
+  function exportCsv() {
+    const cols = ['id','lang','style','topic','message_input','output','comment'];
+    const esc  = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+    const rows = [cols.join(','), ...filtered.map(c => cols.map(k => esc(c[k])).join(','))];
+    const blob = new Blob(['﻿' + rows.join('\n')], { type:'text/csv;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'bot_test_results.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  if (loading) return <div className="max-w-6xl mx-auto px-6 py-8"><Spinner /></div>;
+  if (error)   return <div className="max-w-6xl mx-auto px-6 py-8"><ApiErrorBanner error={error} onRetry={reload} /></div>;
+
+  const filledCount = all.filter(c => (c.output || '').trim()).length;
+  const commentedCount = all.filter(c => (c.comment || '').trim()).length;
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 py-8">
+      <PageHeader title="Bot Test Lab" subtitle={`${all.length} cases · ${filledCount} replied · ${commentedCount} commented`}
+        action={<Button variant="ghost" size="sm" onClick={exportCsv}>↓ Export CSV</Button>} />
+
+      <div className="flex gap-2 mb-6 border-b border-border">
+        {[{key:'run',label:'▶ Run'},{key:'review',label:'📝 Review & Comment'}].map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className="px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors"
+            style={{
+              color: tab === t.key ? '#E76F51' : '#6B7280',
+              borderColor: tab === t.key ? '#E76F51' : 'transparent'
+            }}>{t.label}</button>
+        ))}
+      </div>
+
+      <Card className="p-4 mb-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          <div>
+            <div className="text-xs font-bold text-muted mb-1">Language</div>
+            <Select value={filterLang} onChange={e => setFilterLang(e.target.value)}>
+              <option value="">All</option>
+              {langs.map(l => <option key={l} value={l}>{l}</option>)}
+            </Select>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-muted mb-1">Style</div>
+            <Select value={filterStyle} onChange={e => setFilterStyle(e.target.value)}>
+              <option value="">All</option>
+              {styles.map(s => <option key={s} value={s}>{s}</option>)}
+            </Select>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-muted mb-1">Topic</div>
+            <Select value={filterTopic} onChange={e => setFilterTopic(e.target.value)}>
+              <option value="">All</option>
+              {topics.map(t => <option key={t} value={t}>{t.length > 32 ? t.slice(0,32)+'…' : t}</option>)}
+            </Select>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-muted mb-1">Limit (per run)</div>
+            <Input type="number" value={limit} onChange={e => setLimit(e.target.value)} placeholder="all" min="1" />
+          </div>
+        </div>
+        <div className="text-sm text-muted flex items-center gap-4 flex-wrap">
+          <span><strong className="text-charcoal">{filtered.length}</strong> match filters</span>
+          {tab === 'run' && (
+            <>
+              <span>· <strong className="text-charcoal">{runnable.length}</strong> will run</span>
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={onlyUnfilled} onChange={e => setOnlyUnfilled(e.target.checked)} />
+                <span>only unfilled</span>
+              </label>
+            </>
+          )}
+        </div>
+      </Card>
+
+      {tab === 'run'    && <RunPanel    cases={filtered} runnable={runnable} running={running} progress={progress} onRun={runBatch} onStop={() => { stopRef.current = true; }} onRunOne={runOne} />}
+      {tab === 'review' && <ReviewPanel cases={filtered} setData={setData} />}
+    </div>
+  );
+}
+
+function RunPanel({ cases, runnable, running, progress, onRun, onStop, onRunOne }) {
+  const pct = progress.total ? (progress.done / progress.total) * 100 : 0;
+  return (
+    <div>
+      <Card className="p-5 mb-5">
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
+          {!running
+            ? <Button onClick={onRun} disabled={runnable.length === 0}>▶ Run {runnable.length} test{runnable.length !== 1 ? 's' : ''}</Button>
+            : <Button variant="danger" onClick={onStop}>■ Stop</Button>}
+          {running && <span className="text-sm text-muted">Running {progress.done}/{progress.total}…</span>}
+        </div>
+        {running && (
+          <>
+            <div className="w-full bg-sand rounded-full h-2 overflow-hidden">
+              <div className="bg-coral h-2 transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            {progress.current && (
+              <div className="mt-2 text-xs text-muted truncate">
+                ▸ #{progress.current.id} [{progress.current.lang}/{progress.current.style}] {progress.current.message_input.slice(0,100)}…
+              </div>
+            )}
+          </>
+        )}
+      </Card>
+
+      <div className="overflow-auto bg-white border border-border rounded-lg">
+        <table className="w-full text-sm border-collapse">
+          <thead className="bg-sand">
+            <tr>
+              <th className="text-left p-2 font-bold w-14">ID</th>
+              <th className="text-left p-2 font-bold w-12">Lang</th>
+              <th className="text-left p-2 font-bold w-20">Style</th>
+              <th className="text-left p-2 font-bold">Input</th>
+              <th className="text-left p-2 font-bold">Output</th>
+              <th className="text-left p-2 font-bold w-20"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {cases.slice(0, 200).map(c => (
+              <tr key={c.id} className="border-t border-border align-top">
+                <td className="p-2 font-mono text-xs">{c.id}</td>
+                <td className="p-2 text-xs">{c.lang}</td>
+                <td className="p-2 text-xs">{c.style}</td>
+                <td className="p-2 text-xs"><div className="line-clamp-2">{c.message_input}</div></td>
+                <td className="p-2 text-xs">
+                  {(c.output || '').trim()
+                    ? <div className="line-clamp-2">{c.output}</div>
+                    : <span className="text-muted italic">— pending —</span>}
+                </td>
+                <td className="p-2">
+                  <Button size="sm" variant="ghost" disabled={running}
+                    onClick={() => onRunOne(c).catch(e => toast.error(e.message))}>
+                    {(c.output || '').trim() ? 'Re-run' : 'Run'}
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {cases.length > 200 && (
+          <p className="text-xs text-muted text-center py-2 border-t border-border">
+            Showing first 200 of {cases.length} — narrow with filters to see more
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ReviewPanel({ cases, setData }) {
+  const replied = cases.filter(c => (c.output || '').trim());
+  if (replied.length === 0) return <EmptyState icon="📝" title="Nothing to review yet" description="Run some tests first." />;
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-muted">{replied.length} replied case{replied.length !== 1 ? 's' : ''}</p>
+      {replied.map(c => <ReviewCard key={c.id} testCase={c} setData={setData} />)}
+    </div>
+  );
+}
+
+function ReviewCard({ testCase: c, setData }) {
+  const [comment, setComment] = useState(c.comment || '');
+  const [saving, setSaving]   = useState(false);
+  const [dirty, setDirty]     = useState(false);
+
+  async function save() {
+    if (!dirty || saving) return;
+    setSaving(true);
+    try {
+      await window.api.updateTestCase(c.id, { comment });
+      setData(prev => prev.map(x => x.id === c.id ? { ...x, comment } : x));
+      setDirty(false);
+      toast('💾 Saved');
+    } catch (e) { toast.error(e.message); }
+    setSaving(false);
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <span className="text-xs font-mono text-muted">#{c.id}</span>
+        <Badge variant="navy">{c.lang}</Badge>
+        <Badge variant="teal">{c.style}</Badge>
+        <Badge variant="coral">{c.topic}</Badge>
+        {(c.comment || '').trim() && <Badge variant="sage">commented</Badge>}
+      </div>
+      <div className="grid md:grid-cols-2 gap-3 mb-3">
+        <div>
+          <p className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Input</p>
+          <div className="bg-sand rounded-lg p-3 text-sm whitespace-pre-wrap">{c.message_input}</div>
+        </div>
+        <div>
+          <p className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Bot Reply</p>
+          <div className="bg-white border border-border rounded-lg p-3 text-sm whitespace-pre-wrap">{c.output}</div>
+        </div>
+      </div>
+      <div>
+        <p className="text-xs font-bold text-muted uppercase tracking-wider mb-1">My Comment</p>
+        <Textarea value={comment} onChange={e => { setComment(e.target.value); setDirty(true); }} onBlur={save}
+          placeholder="What do you like / dislike about this reply?" rows={2} />
+        <div className="flex justify-end mt-1">
+          <Button size="sm" variant="ghost" onClick={save} disabled={!dirty || saving}>
+            {saving ? 'Saving…' : dirty ? 'Save' : '✓ Saved'}
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+/* ══════════════════════════════════════════
    APP ROOT
 ══════════════════════════════════════════ */
 const GUEST_NAV = [
@@ -883,6 +1149,7 @@ const DEV_NAV = [
   { page:'messages',       label:'Messages'      },
   { page:'review-queue',   label:'Review Queue'  },
   { page:'process-message',label:'Process Message'},
+  { page:'bot-test-lab',   label:'Test Lab'      },
 ];
 
 function App() {
@@ -993,6 +1260,7 @@ function AppInner({ route, navigate, showSettings, setShowSettings, showLogin, s
         {p === 'message-detail'  && <RequireAuth minRole="developer" onLogin={()=>setShowLogin(true)}><MessageDetailPage id={route.id} navigate={navigate} /></RequireAuth>}
         {p === 'my-submissions'  && <RequireAuth minRole="user" onLogin={()=>setShowLogin(true)}><MySubmissionsPage navigate={navigate} submissions={submissions} user={user} /></RequireAuth>}
         {p === 'review-queue'    && <RequireAuth minRole="developer" onLogin={()=>setShowLogin(true)}><ReviewQueuePage submissions={submissions} onReview={handleReview} /></RequireAuth>}
+        {p === 'bot-test-lab'    && <RequireAuth minRole="developer" onLogin={()=>setShowLogin(true)}><BotTestLabPage /></RequireAuth>}
       </main>
 
       {showLogin    && <LoginModal onClose={()=>setShowLogin(false)} onSuccess={()=>setShowLogin(false)} />}

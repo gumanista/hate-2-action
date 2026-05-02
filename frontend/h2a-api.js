@@ -58,5 +58,8 @@ window.api = (() => {
     // Process message
     processMessage: (message, response_style) =>
       request('/process-message', { method: 'POST', body: json({ message, response_style }) }),
+    // Test cases
+    getTestCases:   ()         => request('/test-cases'),
+    updateTestCase: (id, data) => request(`/test-cases/${id}`, { method: 'PUT', body: json(data) }),
   };
 })();

@@ -70,3 +70,8 @@ class SolutionOut(BaseModel):
 class ProcessMessageIn(BaseModel):
     message: str
     response_style: str = "normal"
+
+
+class TestCaseUpdate(BaseModel):
+    output: Optional[str] = None
+    comment: Optional[str] = None

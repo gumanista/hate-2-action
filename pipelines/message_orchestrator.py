@@ -20,7 +20,13 @@ PIPELINE_FACTORY = PipelineFactory()
 INTENT_PIPELINES = PIPELINE_FACTORY.intents
 
 
-def _apply_style_filter(reply: str, style: str, pipeline_name: str, lang: str = "uk") -> str:
+def _apply_style_filter(
+    reply: str,
+    style: str,
+    pipeline_name: str,
+    lang: str = "uk",
+    original_message: str | None = None,
+) -> str:
     if not reply:
         return reply
     if pipeline_name == "change_style":
@@ -28,7 +34,7 @@ def _apply_style_filter(reply: str, style: str, pipeline_name: str, lang: str = 
     if style == "normal":
         return reply
     try:
-        return llm.rewrite_reply_with_style(reply, style, lang=lang)
+        return llm.rewrite_reply_with_style(reply, style, lang=lang, original_message=original_message)
     except Exception as e:
         logger.warning(f"Style filter failed for pipeline={pipeline_name}: {e}")
         return reply
@@ -123,7 +129,13 @@ async def pipeline_process_message(
         pipeline = PIPELINE_FACTORY.create(pipeline_name)
         result = await pipeline.run(context)
         reply = (
-            _apply_style_filter(result.reply, style, result.pipeline_used, lang=lang)
+            _apply_style_filter(
+                result.reply,
+                style,
+                result.pipeline_used,
+                lang=lang,
+                original_message=message_text,
+            )
             if result.apply_style_filter
             else result.reply
         )
