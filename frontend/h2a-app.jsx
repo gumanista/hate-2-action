@@ -897,20 +897,42 @@ function BotTestLabPage() {
     return output;
   }
 
-  async function runBatch() {
-    if (running) return;
+  async function runList(list) {
+    if (running || list.length === 0) return;
     setRunning(true); stopRef.current = false;
-    setProgress({ done: 0, total: runnable.length, current: null });
-    for (let i = 0; i < runnable.length; i++) {
+    setProgress({ done: 0, total: list.length, current: null });
+    for (let i = 0; i < list.length; i++) {
       if (stopRef.current) break;
-      const c = runnable[i];
-      setProgress({ done: i, total: runnable.length, current: c });
+      const c = list[i];
+      setProgress({ done: i, total: list.length, current: c });
       try { await runOne(c); }
       catch (e) { toast.error(`#${c.id}: ${e.message}`); }
-      setProgress({ done: i + 1, total: runnable.length, current: null });
+      setProgress({ done: i + 1, total: list.length, current: null });
     }
     setRunning(false);
     toast(stopRef.current ? 'Stopped' : '✅ Run complete');
+  }
+
+  async function runBatch() { return runList(runnable); }
+
+  async function sampleAndRun() {
+    const pool = onlyUnfilled ? all.filter(c => !(c.output || '').trim()) : all;
+    const groups = {};
+    for (const c of pool) {
+      const k = `${c.topic}::${c.lang}::${c.style}`;
+      (groups[k] ||= []).push(c);
+    }
+    const sample = [];
+    for (const arr of Object.values(groups)) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      sample.push(...arr.slice(0, 3));
+    }
+    if (sample.length === 0) { toast.error('No cases available to sample'); return; }
+    toast.info(`🎲 Sampled ${sample.length} cases`);
+    return runList(sample);
   }
 
   function exportCsv() {
@@ -988,21 +1010,28 @@ function BotTestLabPage() {
         </div>
       </Card>
 
-      {tab === 'run'    && <RunPanel    cases={filtered} runnable={runnable} running={running} progress={progress} onRun={runBatch} onStop={() => { stopRef.current = true; }} onRunOne={runOne} />}
+      {tab === 'run'    && <RunPanel    cases={filtered} runnable={runnable} running={running} progress={progress} onRun={runBatch} onSample={sampleAndRun} onStop={() => { stopRef.current = true; }} onRunOne={runOne} />}
       {tab === 'review' && <ReviewPanel cases={filtered} setData={setData} />}
     </div>
   );
 }
 
-function RunPanel({ cases, runnable, running, progress, onRun, onStop, onRunOne }) {
+function RunPanel({ cases, runnable, running, progress, onRun, onSample, onStop, onRunOne }) {
   const pct = progress.total ? (progress.done / progress.total) * 100 : 0;
   return (
     <div>
       <Card className="p-5 mb-5">
         <div className="flex items-center gap-3 mb-3 flex-wrap">
-          {!running
-            ? <Button onClick={onRun} disabled={runnable.length === 0}>▶ Run {runnable.length} test{runnable.length !== 1 ? 's' : ''}</Button>
-            : <Button variant="danger" onClick={onStop}>■ Stop</Button>}
+          {!running ? (
+            <>
+              <Button onClick={onRun} disabled={runnable.length === 0}>▶ Run {runnable.length} test{runnable.length !== 1 ? 's' : ''}</Button>
+              <Button variant="ghost" onClick={onSample} title="Up to 3 random cases per (topic × lang × style) — ignores filters">
+                🎲 Sample 3 / topic·lang·style
+              </Button>
+            </>
+          ) : (
+            <Button variant="danger" onClick={onStop}>■ Stop</Button>
+          )}
           {running && <span className="text-sm text-muted">Running {progress.done}/{progress.total}…</span>}
         </div>
         {running && (
@@ -1066,10 +1095,17 @@ function RunPanel({ cases, runnable, running, progress, onRun, onStop, onRunOne 
 function ReviewPanel({ cases, setData }) {
   const replied = cases.filter(c => (c.output || '').trim());
   if (replied.length === 0) return <EmptyState icon="📝" title="Nothing to review yet" description="Run some tests first." />;
+  const sorted = [...replied].sort((a, b) => {
+    const aHas = (a.comment || '').trim() ? 1 : 0;
+    const bHas = (b.comment || '').trim() ? 1 : 0;
+    if (aHas !== bHas) return aHas - bHas; // uncommented first
+    return a.id - b.id;
+  });
+  const todo = replied.length - replied.filter(c => (c.comment || '').trim()).length;
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted">{replied.length} replied case{replied.length !== 1 ? 's' : ''}</p>
-      {replied.map(c => <ReviewCard key={c.id} testCase={c} setData={setData} />)}
+      <p className="text-sm text-muted"><strong className="text-charcoal">{todo}</strong> to review · {replied.length - todo} commented</p>
+      {sorted.map(c => <ReviewCard key={c.id} testCase={c} setData={setData} />)}
     </div>
   );
 }
