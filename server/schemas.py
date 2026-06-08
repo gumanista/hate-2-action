@@ -75,3 +75,7 @@ class ProcessMessageIn(BaseModel):
 class TestCaseUpdate(BaseModel):
     output: Optional[str] = None
     comment: Optional[str] = None
+    new_output: Optional[str] = None
+    output_gpt54nano: Optional[str] = None
+    output_gpt55: Optional[str] = None
+    output_gemini31: Optional[str] = None

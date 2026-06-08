@@ -346,6 +346,14 @@ def put_test_case(
             target["output"] = payload.output
         if payload.comment is not None:
             target["comment"] = payload.comment
+        if payload.new_output is not None:
+            target["new_output"] = payload.new_output
+        if payload.output_gpt54nano is not None:
+            target["output_gpt54nano"] = payload.output_gpt54nano
+        if payload.output_gpt55 is not None:
+            target["output_gpt55"] = payload.output_gpt55
+        if payload.output_gemini31 is not None:
+            target["output_gemini31"] = payload.output_gemini31
         _save_test_cases(cases)
         return target
 

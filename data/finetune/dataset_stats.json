@@ -1,0 +1,58 @@
+{
+  "input_file": "test.json",
+  "total_input_rows": 2000,
+  "written_examples": 2000,
+  "skipped_rows": 0,
+  "used_new_output": 14,
+  "splits": {
+    "full": 2000,
+    "train": 1800,
+    "val": 100,
+    "test": 100
+  },
+  "ratios": {
+    "train_ratio": 0.9,
+    "val_ratio": 0.05,
+    "test_ratio": 0.05
+  },
+  "seed": 42,
+  "columns": [
+    "system",
+    "instruction",
+    "response",
+    "lang",
+    "style",
+    "topic",
+    "source_id",
+    "used_new_output",
+    "has_comment"
+  ],
+  "role_mapping": {
+    "system": "System",
+    "instruction": "User",
+    "response": "Assistant"
+  },
+  "counts_by_lang": {
+    "en": 1000,
+    "uk": 1000
+  },
+  "counts_by_style": {
+    "funny": 400,
+    "normal": 400,
+    "polite": 400,
+    "rude": 400,
+    "sarcastic": 400
+  },
+  "counts_by_topic": {
+    "Інклюзія: доступність як норма, а не церемонія": 200,
+    "Громади і безпритульні тварини": 200,
+    "Дезінформація": 200,
+    "Економічна ситуація": 200,
+    "Криза шкільного середовища і роль вчителя": 200,
+    "Мова і культура": 200,
+    "Правозахист і допомога вразливим групам": 200,
+    "Психічне здоров’я та емоційна стійкість": 200,
+    "Толерантність до політичних злочинців": 200,
+    "Шум і транспорт: тиша як право": 200
+  }
+}

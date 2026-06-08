@@ -6,3 +6,6 @@ todo.md
 *.pdf
 .env.local
 tests/test_bot_config.py
+.agents
+.claude
+.codex

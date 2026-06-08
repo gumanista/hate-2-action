@@ -897,6 +897,14 @@ function BotTestLabPage() {
     return output;
   }
 
+  async function rerunOne(c) {
+    const res = await window.api.processMessage(c.message_input, c.style);
+    const new_output = (res?.text || '').trim();
+    await window.api.updateTestCase(c.id, { new_output });
+    setData(prev => prev.map(x => x.id === c.id ? { ...x, new_output } : x));
+    return new_output;
+  }
+
   async function runList(list) {
     if (running || list.length === 0) return;
     setRunning(true); stopRef.current = false;
@@ -958,7 +966,7 @@ function BotTestLabPage() {
         action={<Button variant="ghost" size="sm" onClick={exportCsv}>↓ Export CSV</Button>} />
 
       <div className="flex gap-2 mb-6 border-b border-border">
-        {[{key:'run',label:'▶ Run'},{key:'review',label:'📝 Review & Comment'}].map(t => (
+        {[{key:'run',label:'▶ Run'},{key:'review',label:'📝 Review & Comment'},{key:'compare',label:'📊 Compare (commented)'},{key:'models',label:'🤖 Compare Models'}].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className="px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors"
             style={{
@@ -1012,6 +1020,211 @@ function BotTestLabPage() {
 
       {tab === 'run'    && <RunPanel    cases={filtered} runnable={runnable} running={running} progress={progress} onRun={runBatch} onSample={sampleAndRun} onStop={() => { stopRef.current = true; }} onRunOne={runOne} />}
       {tab === 'review' && <ReviewPanel cases={filtered} setData={setData} />}
+      {tab === 'models' && <ModelComparePanel cases={filtered} setData={setData} />}
+      {tab === 'compare' && <ComparePanel cases={all} running={running} progress={progress}
+        onRunAll={async () => {
+          const list = all.filter(c => (c.comment || '').trim());
+          if (list.length === 0) { toast.error('No commented cases to run'); return; }
+          if (running) return;
+          setRunning(true); stopRef.current = false;
+          setProgress({ done: 0, total: list.length, current: null });
+          for (let i = 0; i < list.length; i++) {
+            if (stopRef.current) break;
+            const c = list[i];
+            setProgress({ done: i, total: list.length, current: c });
+            try { await rerunOne(c); }
+            catch (e) { toast.error(`#${c.id}: ${e.message}`); }
+            setProgress({ done: i + 1, total: list.length, current: null });
+          }
+          setRunning(false);
+          toast(stopRef.current ? 'Stopped' : '✅ Compare run complete');
+        }}
+        onRunOne={rerunOne}
+        onStop={() => { stopRef.current = true; }} />}
+    </div>
+  );
+}
+
+function ModelComparePanel({ cases, setData }) {
+  const [onlyWithOutput, setOnlyWithOutput] = useState(true);
+  const [expanded, setExpanded] = useState({});
+  const [editing, setEditing] = useState(null); // {id, field}
+
+  const rows = cases.filter(c => !onlyWithOutput ||
+    (c.output_gpt54nano || c.output_gpt55 || c.output_gemini31 || '').trim());
+
+  const stats = {
+    nano:  cases.filter(c => (c.output_gpt54nano || '').trim()).length,
+    gpt55: cases.filter(c => (c.output_gpt55     || '').trim()).length,
+    gem:   cases.filter(c => (c.output_gemini31  || '').trim()).length,
+  };
+
+  const toggle = id => setExpanded(s => ({ ...s, [id]: !s[id] }));
+
+  async function saveCell(c, field, value) {
+    try {
+      await window.api.updateTestCase(c.id, { [field]: value });
+      setData(prev => prev.map(x => x.id === c.id ? { ...x, [field]: value } : x));
+      toast('💾 Saved');
+    } catch (e) { toast.error(e.message); }
+    setEditing(null);
+  }
+
+  function exportCsv() {
+    const cols = ['id','lang','style','topic','message_input','output_gpt54nano','output_gpt55','output_gemini31'];
+    const esc  = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+    const data = [cols.join(','), ...rows.map(c => cols.map(k => esc(c[k])).join(','))];
+    const blob = new Blob(['﻿' + data.join('\n')], { type:'text/csv;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'model_comparison.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div>
+      <Card className="p-4 mb-5">
+        <div className="flex flex-wrap gap-4 text-sm items-center">
+          <span className="inline-flex items-center gap-2"><Badge variant="navy">gpt-5.4-nano</Badge><strong className="text-charcoal">{stats.nano}</strong><span className="text-muted">filled</span></span>
+          <span className="inline-flex items-center gap-2"><Badge variant="teal">gpt-5.5</Badge><strong className="text-charcoal">{stats.gpt55}</strong><span className="text-muted">filled</span></span>
+          <span className="inline-flex items-center gap-2"><Badge variant="coral">gemini-3.1-pro-preview</Badge><strong className="text-charcoal">{stats.gem}</strong><span className="text-muted">filled</span></span>
+          <label className="inline-flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={onlyWithOutput} onChange={e => setOnlyWithOutput(e.target.checked)} />
+            <span>only rows with at least one output</span>
+          </label>
+          <Button variant="ghost" size="sm" className="ml-auto" onClick={exportCsv}>↓ Export CSV</Button>
+        </div>
+        <p className="text-xs text-muted mt-2">Click a row to expand all cells · click a model cell to edit (paste in outputs from external runs)</p>
+      </Card>
+
+      <div className="overflow-auto bg-white border border-border rounded-lg">
+        <table className="w-full text-xs border-collapse">
+          <thead className="bg-sand">
+            <tr>
+              <th className="text-left p-2 font-bold w-14">ID</th>
+              <th className="text-left p-2 font-bold" style={{minWidth:'220px'}}>Input</th>
+              <th className="text-left p-2 font-bold" style={{minWidth:'260px'}}>gpt-5.4-nano</th>
+              <th className="text-left p-2 font-bold" style={{minWidth:'260px'}}>gpt-5.5</th>
+              <th className="text-left p-2 font-bold" style={{minWidth:'260px'}}>gemini-3.1-pro-preview</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.slice(0, 200).map(c => {
+              const isOpen = !!expanded[c.id];
+              const cls = isOpen ? 'whitespace-pre-wrap' : 'line-clamp-2';
+              const cellFor = (field) => {
+                const value = (c[field] || '').trim();
+                const isEditing = editing && editing.id === c.id && editing.field === field;
+                if (isEditing) {
+                  return (
+                    <Textarea autoFocus defaultValue={value} rows={6}
+                      onClick={e => e.stopPropagation()}
+                      onBlur={e => saveCell(c, field, e.target.value)} />
+                  );
+                }
+                return (
+                  <div onClick={e => { e.stopPropagation(); setEditing({ id: c.id, field }); }}
+                    className={`${cls} ${value ? '' : 'text-muted italic'} cursor-text`}>
+                    {value || '—'}
+                  </div>
+                );
+              };
+              return (
+                <tr key={c.id} className="border-t border-border align-top hover:bg-sand/50 cursor-pointer"
+                  onClick={() => toggle(c.id)}>
+                  <td className="p-2 font-mono">
+                    <div>#{c.id}</div>
+                    <div className="text-[10px] text-muted mt-1">{c.lang} · {c.style}</div>
+                  </td>
+                  <td className="p-2"><div className={cls}>{c.message_input}</div></td>
+                  <td className="p-2">{cellFor('output_gpt54nano')}</td>
+                  <td className="p-2">{cellFor('output_gpt55')}</td>
+                  <td className="p-2">{cellFor('output_gemini31')}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {rows.length === 0 && <p className="text-xs text-muted text-center py-6">No matching cases.</p>}
+        {rows.length > 200 && (
+          <p className="text-xs text-muted text-center py-2 border-t border-border">
+            Showing first 200 of {rows.length} — narrow with filters to see more
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ComparePanel({ cases, running, progress, onRunAll, onRunOne, onStop }) {
+  const commented = cases.filter(c => (c.comment || '').trim());
+  const pct = progress.total ? (progress.done / progress.total) * 100 : 0;
+  if (commented.length === 0) {
+    return <EmptyState icon="📊" title="No commented cases" description="Add comments in the Review tab first." />;
+  }
+  const withNew = commented.filter(c => (c.new_output || '').trim()).length;
+  return (
+    <div>
+      <Card className="p-5 mb-5">
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
+          {!running ? (
+            <Button onClick={onRunAll}>▶ Run on {commented.length} commented case{commented.length !== 1 ? 's' : ''}</Button>
+          ) : (
+            <Button variant="danger" onClick={onStop}>■ Stop</Button>
+          )}
+          <span className="text-sm text-muted">
+            <strong className="text-charcoal">{withNew}</strong>/{commented.length} regenerated
+          </span>
+          {running && <span className="text-sm text-muted">Running {progress.done}/{progress.total}…</span>}
+        </div>
+        {running && (
+          <div className="w-full bg-sand rounded-full h-2 overflow-hidden">
+            <div className="bg-coral h-2 transition-all" style={{ width: `${pct}%` }} />
+          </div>
+        )}
+      </Card>
+
+      <div className="flex flex-col gap-4">
+        {commented.map(c => (
+          <Card key={c.id} className="p-5">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <span className="text-xs font-mono text-muted">#{c.id}</span>
+              <Badge variant="navy">{c.lang}</Badge>
+              <Badge variant="teal">{c.style}</Badge>
+              <Badge variant="coral">{c.topic}</Badge>
+              <div className="flex-1" />
+              <Button size="sm" variant="ghost" disabled={running}
+                onClick={() => onRunOne(c).catch(e => toast.error(e.message))}>
+                {(c.new_output || '').trim() ? 'Re-run' : 'Run'}
+              </Button>
+            </div>
+            <div className="mb-3">
+              <p className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Input</p>
+              <div className="bg-sand rounded-lg p-3 text-sm whitespace-pre-wrap">{c.message_input}</div>
+            </div>
+            <div className="mb-3">
+              <p className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Comment (feedback)</p>
+              <div className="bg-white border-l-4 border-coral rounded-lg p-3 text-sm whitespace-pre-wrap">{c.comment}</div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Original Output</p>
+                <div className="bg-white border border-border rounded-lg p-3 text-sm whitespace-pre-wrap">
+                  {(c.output || '').trim() || <span className="text-muted italic">— empty —</span>}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider mb-1">New Output (after prompt change)</p>
+                <div className="bg-white border-2 border-teal rounded-lg p-3 text-sm whitespace-pre-wrap">
+                  {(c.new_output || '').trim()
+                    ? c.new_output
+                    : <span className="text-muted italic">— not yet generated, click Run —</span>}
+                </div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
