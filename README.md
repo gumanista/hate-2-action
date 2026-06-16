@@ -1,6 +1,7 @@
 # 🔥 Hate-2-Action Bot
 
 A Telegram bot that turns complaints into action by recommending NGOs and projects.
+Telegram: @Hate2Action_bot
 
 ## How It Works
 
