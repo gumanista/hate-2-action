@@ -9,3 +9,4 @@ tests/test_bot_config.py
 .agents
 .claude
 .codex
+interview.md
