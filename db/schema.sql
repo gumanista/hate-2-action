@@ -165,3 +165,15 @@ CREATE TABLE IF NOT EXISTS public.organizations_solutions (
 CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON public.messages_history(chat_id);
 CREATE INDEX IF NOT EXISTS idx_messages_user_id ON public.messages_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_problems_processed ON public.problems(is_processed);
+
+-- Vector (HNSW) indexes for cosine-similarity search.
+-- Cover exactly the embedding columns queried with the <=> operator at runtime.
+-- problems/solutions grow with every user message, so their ANN indexes matter most.
+CREATE INDEX IF NOT EXISTS idx_org_vec_embedding_hnsw
+    ON public.organizations_vec USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_proj_vec_embedding_hnsw
+    ON public.projects_vec USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_problems_embedding_hnsw
+    ON public.problems USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_solutions_embedding_hnsw
+    ON public.solutions USING hnsw (embedding vector_cosine_ops);

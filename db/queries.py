@@ -1,5 +1,8 @@
+import os
+import threading
 import psycopg2
 import psycopg2.extras
+from psycopg2 import pool as psycopg2_pool
 from contextlib import contextmanager
 from dotenv import load_dotenv
 from db.config import DEFAULT_DATABASE_URL, get_database_url
@@ -7,14 +10,43 @@ from db.config import DEFAULT_DATABASE_URL, get_database_url
 load_dotenv()
 DATABASE_URL = get_database_url(DEFAULT_DATABASE_URL)
 
+_pool: psycopg2_pool.ThreadedConnectionPool | None = None
+_pool_lock = threading.Lock()
+
+
+def _get_pool() -> psycopg2_pool.ThreadedConnectionPool:
+    """Return the process-wide connection pool, creating it on first use.
+
+    Lazily initialized (double-checked locking) so importing this module never
+    opens a connection — tests mock ``db.queries`` and must not touch a real DB.
+    The pool is thread-safe, which matters because the bot runs each pipeline in
+    a worker thread. Size is tunable via ``DB_POOL_MIN`` / ``DB_POOL_MAX``.
+    """
+    global _pool
+    if _pool is None:
+        with _pool_lock:
+            if _pool is None:
+                minconn = int(os.getenv("DB_POOL_MIN", "1"))
+                maxconn = int(os.getenv("DB_POOL_MAX", "10"))
+                _pool = psycopg2_pool.ThreadedConnectionPool(
+                    minconn,
+                    maxconn,
+                    DATABASE_URL,
+                    cursor_factory=psycopg2.extras.RealDictCursor,
+                )
+    return _pool
+
 
 def get_connection():
-    return psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+    """Borrow a connection from the pool. Caller must return it via ``putconn``."""
+    return _get_pool().getconn()
 
 
 @contextmanager
 def db_cursor():
-    conn = get_connection()
+    pool = _get_pool()
+    conn = pool.getconn()
+    cursor = None
     try:
         cursor = conn.cursor()
         yield cursor
@@ -23,8 +55,9 @@ def db_cursor():
         conn.rollback()
         raise
     finally:
-        cursor.close()
-        conn.close()
+        if cursor is not None:
+            cursor.close()
+        pool.putconn(conn)  # always return the connection to the pool
 
 def get_or_create_user(user_id: int, username: str = None, first_name: str = None) -> dict:
     with db_cursor() as cur:
