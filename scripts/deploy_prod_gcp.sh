@@ -4,7 +4,25 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-DEFAULT_GCP_ACCOUNT="hate2action@gmail.com"
+# Production secrets/config live in .env.prod (gitignored). Values already set
+# in the shell take precedence over the file. Override the location with
+# ENV_FILE=/path/to/file.
+ENV_FILE="${ENV_FILE:-${ROOT_DIR}/.env.prod}"
+if [[ -f "$ENV_FILE" ]]; then
+  printf 'Loading deploy configuration from %s\n' "$ENV_FILE"
+  set -a
+  # shellcheck disable=SC1090
+  source <(grep -E '^(export )?[A-Za-z_][A-Za-z0-9_]*=' "$ENV_FILE" | while IFS= read -r line; do
+    var_name="${line#export }"
+    var_name="${var_name%%=*}"
+    if [[ -z "${!var_name:-}" ]]; then
+      printf '%s\n' "$line"
+    fi
+  done)
+  set +a
+fi
+
+DEFAULT_GCP_ACCOUNT="hate2actionbot@gmail.com"
 DEFAULT_REGION="europe-central2"
 DEFAULT_SERVICE_NAME="hate2action-prod"
 DEFAULT_SQL_INSTANCE="hate2action-prod-db"
@@ -82,7 +100,9 @@ set, existing Secret Manager values are reused. New values are only prompted or
 generated when the corresponding secret does not exist yet.
 
 DB_INIT_MODE controls the Cloud Run DB init job:
-  auto   Run only when the database is newly created. This is the default.
+  auto   Run when the database is newly created, or when the init job has
+         never completed successfully (e.g. an earlier deploy was interrupted
+         between creating and initializing the database). This is the default.
   always Run on every deploy.
   never  Do not run.
 EOF
@@ -209,12 +229,40 @@ service_account_exists() {
 grant_project_role() {
   local member="$1"
   local role="$2"
+  local attempt output
 
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-    --member="$member" \
-    --role="$role" \
-    --quiet \
-    >/dev/null
+  # Newly created service accounts can take a while to propagate to the IAM
+  # backend; the binding call fails with "does not exist" until then.
+  for attempt in 1 2 3 4 5; do
+    if output="$(gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+      --member="$member" \
+      --role="$role" \
+      --quiet 2>&1)"; then
+      return 0
+    fi
+    if [[ "$attempt" -lt 5 ]]; then
+      log "IAM binding ${role} for ${member} failed (likely propagation delay); retrying in 10s (attempt ${attempt}/5)"
+      sleep 10
+    fi
+  done
+
+  printf '%s\n' "$output" >&2
+  die "Failed to grant ${role} to ${member}"
+}
+
+wait_for_service_account() {
+  local sa_email="$1"
+  local attempt
+
+  for attempt in $(seq 1 12); do
+    if service_account_exists "$sa_email"; then
+      return 0
+    fi
+    log "Waiting for service account ${sa_email} to propagate (attempt ${attempt}/12)"
+    sleep 5
+  done
+
+  die "Service account ${sa_email} did not become visible in time"
 }
 
 sql_instance_exists() {
@@ -257,6 +305,19 @@ run_job_exists() {
     --region "$REGION" \
     --project "$PROJECT_ID" \
     >/dev/null 2>&1
+}
+
+db_init_has_succeeded() {
+  # True when the DB init job has at least one successful execution. Used by
+  # auto mode to catch partial deploys where a previous run created the
+  # database but died before initializing it.
+  gcloud run jobs executions list \
+    --job "$JOB_NAME" \
+    --region "$REGION" \
+    --project "$PROJECT_ID" \
+    --format='value(status.succeededCount)' \
+    2>/dev/null \
+    | grep -q '^[1-9]'
 }
 
 parse_args() {
@@ -489,6 +550,7 @@ if ! service_account_exists "$RUNTIME_SA_EMAIL"; then
     --display-name="Hate2Action Production Runtime" \
     --project "$PROJECT_ID" \
     >/dev/null
+  wait_for_service_account "$RUNTIME_SA_EMAIL"
 else
   log "Runtime service account already exists: ${RUNTIME_SA_EMAIL}"
 fi
@@ -505,6 +567,14 @@ do
     grant_project_role "serviceAccount:${build_sa}" roles/artifactregistry.writer
   fi
 done
+
+# New projects run Cloud Build as the Compute Engine default service account,
+# which cannot read the uploaded source tarball or write build logs until it
+# has the Cloud Build builder role.
+COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+if service_account_exists "$COMPUTE_SA"; then
+  grant_project_role "serviceAccount:${COMPUTE_SA}" roles/cloudbuild.builds.builder
+fi
 
 if ! artifact_repo_exists; then
   log "Creating Artifact Registry repository ${ARTIFACT_REPO}"
@@ -604,7 +674,7 @@ if [[ -z "$SERVICE_URL" ]]; then
     --set-secrets "$SECRET_BINDINGS" \
     --min-instances 1 \
     --command python \
-    --args -m,http.server,8080,--bind,0.0.0.0 \
+    --args="-m,http.server,8080,--bind,0.0.0.0" \
     >/dev/null
 
   SERVICE_URL="$(gcloud run services describe "$SERVICE_NAME" \
@@ -616,8 +686,15 @@ fi
 [[ -n "$SERVICE_URL" ]] || die "Could not resolve Cloud Run service URL"
 
 RUN_DB_INIT=false
-if [[ "$DB_INIT_MODE" == "always" || ( "$DB_INIT_MODE" == "auto" && "$DB_CREATED" == true ) ]]; then
+if [[ "$DB_INIT_MODE" == "always" ]]; then
   RUN_DB_INIT=true
+elif [[ "$DB_INIT_MODE" == "auto" ]]; then
+  if [[ "$DB_CREATED" == true ]]; then
+    RUN_DB_INIT=true
+  elif ! db_init_has_succeeded; then
+    log "Database exists but the DB init job has never succeeded (likely an interrupted earlier deploy); running DB init"
+    RUN_DB_INIT=true
+  fi
 fi
 
 if [[ "$RUN_DB_INIT" == true ]]; then
@@ -654,7 +731,7 @@ else
   if [[ "$DB_INIT_MODE" == "never" ]]; then
     log "Skipping database initialization job (never mode)"
   else
-    log "Skipping database initialization job (auto mode; database already exists)"
+    log "Skipping database initialization job (auto mode; database exists and init job has succeeded before)"
   fi
 fi
 

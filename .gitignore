@@ -5,6 +5,7 @@ __pycache__/
 todo.md
 *.pdf
 .env.local
+.env.prod
 tests/test_bot_config.py
 .agents
 .claude
