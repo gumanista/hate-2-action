@@ -4,10 +4,10 @@ __pycache__/
 .pytest_cache/
 todo.md
 *.pdf
-.env.local
-.env.prod
+.env*
 tests/test_bot_config.py
 .agents
 .claude
 .codex
 interview.md
+report*.md
