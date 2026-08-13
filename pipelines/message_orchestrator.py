@@ -11,6 +11,8 @@ import logging
 from db import queries
 from utils import llm
 
+from .telegram_format import sanitize_markdown
+
 from .change_style import resolve_style
 from .pipeline_factory import PipelineContext, PipelineFactory
 
@@ -139,6 +141,7 @@ async def pipeline_process_message(
             if result.apply_style_filter
             else result.reply
         )
+        reply = sanitize_markdown(reply)
         queries.save_message(
             chat_id,
             user_id,

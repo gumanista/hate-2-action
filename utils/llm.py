@@ -40,12 +40,18 @@ LANGUAGE_POLICY = {
     "uk": (
         "Відповідай виключно українською мовою. "
         "Не переходь на інші мови у звичайному тексті. "
-        "Винятки: URL, офіційні назви організацій, технічні команди на кшталт /style_polite."
+        "Винятки: URL, офіційні назви організацій, технічні команди на кшталт /style_polite. "
+        "Форматування: повідомлення показуються в Telegram Markdown, який НЕ підтримує заголовки "
+        "(#, ##, ###). Не використовуй символ '#' для заголовків чи списків. "
+        "Для акценту використовуй лише *жирний*, _курсив_ і [текст](url)."
     ),
     "en": (
         "Reply exclusively in English. "
         "Do not switch to other languages in regular text. "
-        "Exceptions: URLs, official organization names, technical commands like /style_polite."
+        "Exceptions: URLs, official organization names, technical commands like /style_polite. "
+        "Formatting: messages are rendered in Telegram Markdown, which does NOT support headers "
+        "(#, ##, ###). Never use '#' for headings or lists. "
+        "Use only *bold*, _italic_, and [text](url) for emphasis."
     ),
 }
 
