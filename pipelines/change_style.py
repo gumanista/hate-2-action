@@ -46,10 +46,31 @@ STYLE_LABELS_EN = {
 
 STYLE_LABELS = {"uk": STYLE_LABELS_UA, "en": STYLE_LABELS_EN}
 
+# User-facing, one-line descriptions shown in bot replies.
+# Kept separate from `llm.STYLE_PROFILES`, which holds the detailed
+# instructions used to steer the model and should never be shown to users.
+STYLE_DESCRIPTIONS_UA = {
+    "polite": "Теплий, дбайливий тон із підтримкою та практичною порадою.",
+    "funny": "Легкий гумор і жарти по темі, без образ.",
+    "sarcastic": "Гострий сарказм щодо ситуації, а не щодо тебе.",
+    "normal": "Сухий, нейтральний тон — по суті.",
+    "rude": "Прямий, жорсткий tough-love тон, без образ користувача.",
+}
+
+STYLE_DESCRIPTIONS_EN = {
+    "polite": "Warm, caring tone with practical support.",
+    "funny": "Light, on-topic humor — no offense.",
+    "sarcastic": "Sharp sarcasm about the situation, never about you.",
+    "normal": "Dry, neutral tone — straight to the point.",
+    "rude": "Blunt, tough-love tone, never insulting the user.",
+}
+
+STYLE_DESCRIPTIONS = {"uk": STYLE_DESCRIPTIONS_UA, "en": STYLE_DESCRIPTIONS_EN}
+
 
 def _style_help_line(style: str, lang: str = "uk") -> str:
-    profiles = llm.STYLE_PROFILES.get(lang, llm.STYLE_PROFILES["uk"])
-    description = profiles.get(style, "")
+    descriptions = STYLE_DESCRIPTIONS.get(lang, STYLE_DESCRIPTIONS_UA)
+    description = descriptions.get(style, "")
     labels = STYLE_LABELS.get(lang, STYLE_LABELS_UA)
     label = labels.get(style, style)
     desc_word = "Description" if lang == "en" else "Опис"
@@ -81,11 +102,11 @@ async def pipeline_change_style(
     if not style and message:
         style = llm.detect_style_from_message(message)
     labels = STYLE_LABELS.get(lang, STYLE_LABELS_UA)
-    profiles = llm.STYLE_PROFILES.get(lang, llm.STYLE_PROFILES["uk"])
+    descriptions = STYLE_DESCRIPTIONS.get(lang, STYLE_DESCRIPTIONS_UA)
     if style and style in STYLES:
         queries.set_user_style(user_id, style)
         style_label = labels.get(style, style)
-        style_description = profiles.get(style, "")
+        style_description = descriptions.get(style, "")
         style_options = ", ".join(
             f"{labels.get(s, s)} (`{s}`)" for s in STYLES
         )

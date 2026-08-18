@@ -71,6 +71,22 @@ def _check_api_key(x_api_key: str | None) -> None:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
+def _reembed_organization(org: dict) -> None:
+    try:
+        text = f"{org['name']}: {org.get('description') or ''}"
+        queries.upsert_organization_embedding(org["organization_id"], text, llm.get_embedding(text))
+    except Exception as e:
+        logger.warning(f"Could not embed organization {org.get('organization_id')}: {e}")
+
+
+def _reembed_project(project: dict) -> None:
+    try:
+        text = f"{project['name']}: {project.get('description') or ''}"
+        queries.upsert_project_embedding(project["project_id"], text, llm.get_embedding(text))
+    except Exception as e:
+        logger.warning(f"Could not embed project {project.get('project_id')}: {e}")
+
+
 # ── Organizations ────────────────────────────────────────────────────────
 @app.get("/organizations", response_model=list[OrganizationOut])
 def get_organizations(x_api_key: str | None = Header(default=None, alias="X-API-Key")):
@@ -90,7 +106,9 @@ def get_organization(organization_id: int, x_api_key: str | None = Header(defaul
 @app.post("/organizations", response_model=OrganizationOut, status_code=201)
 def post_organization(payload: OrganizationIn, x_api_key: str | None = Header(default=None, alias="X-API-Key")):
     _check_api_key(x_api_key)
-    return queries.create_organization(payload.name, payload.description, payload.website, payload.contact_email)
+    org = queries.create_organization(payload.name, payload.description, payload.website, payload.contact_email)
+    _reembed_organization(org)
+    return org
 
 
 @app.put("/organizations/{organization_id}", response_model=OrganizationOut)
@@ -99,6 +117,7 @@ def put_organization(organization_id: int, payload: OrganizationIn, x_api_key: s
     updated = queries.update_organization(organization_id, payload.name, payload.description, payload.website, payload.contact_email)
     if not updated:
         raise HTTPException(status_code=404, detail="Organization not found")
+    _reembed_organization(updated)
     return updated
 
 
@@ -129,7 +148,9 @@ def get_project(project_id: int, x_api_key: str | None = Header(default=None, al
 @app.post("/projects", response_model=ProjectOut, status_code=201)
 def post_project(payload: ProjectIn, x_api_key: str | None = Header(default=None, alias="X-API-Key")):
     _check_api_key(x_api_key)
-    return queries.create_project(payload.name, payload.description, payload.organization_id)
+    project = queries.create_project(payload.name, payload.description, payload.organization_id)
+    _reembed_project(project)
+    return project
 
 
 @app.put("/projects/{project_id}", response_model=ProjectOut)
@@ -138,6 +159,7 @@ def put_project(project_id: int, payload: ProjectIn, x_api_key: str | None = Hea
     updated = queries.update_project(project_id, payload.name, payload.description, payload.organization_id)
     if not updated:
         raise HTTPException(status_code=404, detail="Project not found")
+    _reembed_project(updated)
     return updated
 
 

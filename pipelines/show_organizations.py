@@ -26,6 +26,8 @@ from utils import llm
 
 logger = logging.getLogger(__name__)
 
+MIN_SIMILARITY = 0.3
+
 
 async def pipeline_show_orgs(
     user_id: int,
@@ -40,8 +42,8 @@ async def pipeline_show_orgs(
         _ = tg_message_id
         enriched = llm.enrich_query(category_message)
         emb = llm.get_embedding(enriched)
-        orgs = queries.find_orgs_by_embedding(emb, top_n=5)
-        projects = queries.find_projects_by_embedding(emb, top_n=5)
+        orgs = queries.find_orgs_by_embedding(emb, top_n=5, min_similarity=MIN_SIMILARITY)
+        projects = queries.find_projects_by_embedding(emb, top_n=5, min_similarity=MIN_SIMILARITY)
         reply = llm.generate_org_reply(category_message, orgs, projects, "normal", lang=lang)
         return reply
     except Exception as e:

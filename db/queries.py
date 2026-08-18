@@ -219,36 +219,42 @@ def link_problem_solution(problem_id: int, solution_id: int, score: float):
             (problem_id, solution_id, score),
         )
 
-def find_orgs_by_embedding(embedding: list[float], top_n: int = 5) -> list[dict]:
+def find_orgs_by_embedding(embedding: list[float], top_n: int = 5, min_similarity: float = 0.0) -> list[dict]:
     embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
     with db_cursor() as cur:
         cur.execute(
-            """SELECT o.organization_id, o.name, o.description, o.website,
-                      1 - (ov.embedding <=> %s::vector) AS similarity
-               FROM organizations o
-               JOIN organizations_vec ov ON o.organization_id = ov.organization_id
-               WHERE ov.embedding IS NOT NULL
-               ORDER BY ov.embedding <=> %s::vector
-               LIMIT %s""",
-            (embedding_str, embedding_str, top_n),
+            """SELECT organization_id, name, description, website, similarity FROM (
+                   SELECT o.organization_id, o.name, o.description, o.website,
+                          1 - (ov.embedding <=> %s::vector) AS similarity
+                   FROM organizations o
+                   JOIN organizations_vec ov ON o.organization_id = ov.organization_id
+                   WHERE ov.embedding IS NOT NULL
+                   ORDER BY ov.embedding <=> %s::vector
+                   LIMIT %s
+               ) ranked
+               WHERE similarity >= %s""",
+            (embedding_str, embedding_str, top_n, min_similarity),
         )
         return [dict(r) for r in cur.fetchall()]
 
 
-def find_projects_by_embedding(embedding: list[float], top_n: int = 5) -> list[dict]:
+def find_projects_by_embedding(embedding: list[float], top_n: int = 5, min_similarity: float = 0.0) -> list[dict]:
     embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
     with db_cursor() as cur:
         cur.execute(
-            """SELECT p.project_id, p.name, p.description,
-                      o.name AS org_name, o.website AS org_website,
-                      1 - (pv.embedding <=> %s::vector) AS similarity
-               FROM projects p
-               JOIN projects_vec pv ON p.project_id = pv.project_id
-               LEFT JOIN organizations o ON p.organization_id = o.organization_id
-               WHERE pv.embedding IS NOT NULL
-               ORDER BY pv.embedding <=> %s::vector
-               LIMIT %s""",
-            (embedding_str, embedding_str, top_n),
+            """SELECT project_id, name, description, org_name, org_website, similarity FROM (
+                   SELECT p.project_id, p.name, p.description,
+                          o.name AS org_name, o.website AS org_website,
+                          1 - (pv.embedding <=> %s::vector) AS similarity
+                   FROM projects p
+                   JOIN projects_vec pv ON p.project_id = pv.project_id
+                   LEFT JOIN organizations o ON p.organization_id = o.organization_id
+                   WHERE pv.embedding IS NOT NULL
+                   ORDER BY pv.embedding <=> %s::vector
+                   LIMIT %s
+               ) ranked
+               WHERE similarity >= %s""",
+            (embedding_str, embedding_str, top_n, min_similarity),
         )
         return [dict(r) for r in cur.fetchall()]
 
@@ -326,6 +332,20 @@ def get_organization(organization_id: int) -> dict | None:
         return org
 
 
+def upsert_organization_embedding(organization_id: int, text: str, embedding: list[float]):
+    embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
+    with db_cursor() as cur:
+        cur.execute(
+            """INSERT INTO organizations_vec (organization_id, text_to_embed, embedding)
+               VALUES (%s, %s, %s::vector)
+               ON CONFLICT (organization_id) DO UPDATE SET
+                   text_to_embed = EXCLUDED.text_to_embed,
+                   embedding = EXCLUDED.embedding,
+                   updated_at = now()""",
+            (organization_id, text[:2000], embedding_str),
+        )
+
+
 def create_organization(name: str, description: str | None, website: str | None, contact_email: str | None) -> dict:
     with db_cursor() as cur:
         cur.execute(
@@ -377,6 +397,20 @@ def get_project(project_id: int) -> dict | None:
         )
         row = cur.fetchone()
         return dict(row) if row else None
+
+
+def upsert_project_embedding(project_id: int, text: str, embedding: list[float]):
+    embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
+    with db_cursor() as cur:
+        cur.execute(
+            """INSERT INTO projects_vec (project_id, text_to_embed, embedding)
+               VALUES (%s, %s, %s::vector)
+               ON CONFLICT (project_id) DO UPDATE SET
+                   text_to_embed = EXCLUDED.text_to_embed,
+                   embedding = EXCLUDED.embedding,
+                   updated_at = now()""",
+            (project_id, text[:2000], embedding_str),
+        )
 
 
 def create_project(name: str, description: str | None, organization_id: int | None) -> dict:

@@ -97,27 +97,21 @@ def _link_solution_to_orgs_and_projects(solution_id: int, embedding: list[float]
 
 
 def _link_problems_to_solutions(problem_rows: list[dict], solution_rows: list[dict]):
-    """Link each problem to its relevant solutions using cosine similarity."""
+    """Link each problem to its relevant solutions using cosine similarity.
+
+    Problems with no solution above the threshold are left unlinked rather than
+    force-linked to their closest (but weak) match — a forced link pollutes
+    org/project retrieval with off-topic recommendations.
+    """
     if not problem_rows or not solution_rows:
         return
     for problem in problem_rows:
-        linked = 0
-        best_solution_id = None
-        best_score = -1.0
         for solution in solution_rows:
             score = _cosine_similarity(problem["embedding"], solution["embedding"])
-            if score > best_score:
-                best_score = score
-                best_solution_id = solution["solution_id"]
             if score >= PROBLEM_SOLUTION_LINK_THRESHOLD:
                 queries.link_problem_solution(
                     problem["problem_id"], solution["solution_id"], score
                 )
-                linked += 1
-        if linked == 0 and best_solution_id is not None:
-            queries.link_problem_solution(
-                problem["problem_id"], best_solution_id, max(best_score, 0.0)
-            )
 async def pipeline_problem_solution(
     user_id: int,
     chat_id: int,
@@ -169,8 +163,12 @@ async def pipeline_problem_solution(
         if not orgs and not projects:
             fallback_text = " ".join(_embedding_text(p) for p in problems_data) or message_text
             fallback_embedding = llm.get_embedding(fallback_text)
-            orgs = queries.find_orgs_by_embedding(fallback_embedding, top_n=3)
-            projects = queries.find_projects_by_embedding(fallback_embedding, top_n=3)
+            orgs = queries.find_orgs_by_embedding(
+                fallback_embedding, top_n=3, min_similarity=ORG_PROJECT_LINK_THRESHOLD
+            )
+            projects = queries.find_projects_by_embedding(
+                fallback_embedding, top_n=3, min_similarity=ORG_PROJECT_LINK_THRESHOLD
+            )
         reply = llm.generate_reply(message_text, "normal", orgs, projects, history, lang=lang)
         return reply
     except Exception as e:
